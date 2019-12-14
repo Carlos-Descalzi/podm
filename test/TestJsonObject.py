@@ -12,7 +12,7 @@ class Entity(JsonObject):
 
 class Company(Entity):
 	"""
-	This class represents a kitchen.
+	This class represents a company.
 	"""
 	company_name = Property('company-name')
 	description = Property('description')        
@@ -30,21 +30,10 @@ class Company(Entity):
 
 
 class Sector(Entity):
-	"""
-	This class represents an order (serving book).
-	"""
-	employees = Property('employees')
-
-	def __init__(self,**kwargs):
-		super(Sector, self).__init__(**kwargs)
-		# Default value for _employees
-		self._employees = []
+	employees = Property('employees',default=[])
 
 class Employee(Entity):
-	"""
-	This class represents an order run. 
-	"""
-	recipe_id = Property('recipe-id')
+	name = Property()
 
 
 class DateTimeHandler(Handler):
@@ -82,31 +71,31 @@ class TestDKJSON(unittest.TestCase):
 		self.assertEqual(set(Company.json_field_names()),set(['oid','created','description','company-name']))
 
 	def test_accessors(self):
-		kitchen = Company()
-		kitchen.oid = '123123123'
-		kitchen.company_name = 'master'
-		kitchen.description = 'master kitchen'
+		company = Company()
+		company.oid = '123123123'
+		company.company_name = 'master'
+		company.description = 'master company'
 
-		self.assertEqual('master',kitchen.company_name)
+		self.assertEqual('master',company.company_name)
 
-		self.assertEqual('master',kitchen.get_company_name())
-		self.assertEqual('master kitchen',kitchen.description)
-		self.assertTrue(kitchen._used_getter)
-		kitchen._used_getter = False
-		self.assertEqual('master kitchen',kitchen.get_description())
-		self.assertTrue(kitchen._used_getter)
+		self.assertEqual('master',company.get_company_name())
+		self.assertEqual('master company',company.description)
+		self.assertTrue(company._used_getter)
+		company._used_getter = False
+		self.assertEqual('master company',company.get_description())
+		self.assertTrue(company._used_getter)
 
-		kitchen.set_description('desc 2')
-		self.assertEqual('desc 2',kitchen.description)
-		self.assertEqual('desc 2',kitchen._description)
+		company.set_description('desc 2')
+		self.assertEqual('desc 2',company.description)
+		self.assertEqual('desc 2',company._description)
 
 
 	def test_to_dict(self):
-		kitchen = Company()
-		kitchen.company_name = 'master'
-		kitchen.description = 'master kitchen'
+		company = Company()
+		company.company_name = 'master'
+		company.description = 'master company'
 
-		data = kitchen.to_dict()
+		data = company.to_dict()
 
 		self.assertTrue('py/object' in data)
 		self.assertTrue('oid' in data)
@@ -115,7 +104,7 @@ class TestDKJSON(unittest.TestCase):
 		self.assertTrue('company-name' in data)
 		self.assertEqual('master', data['company-name'])
 		self.assertTrue('description' in data)
-		self.assertEqual('master kitchen',data['description'])
+		self.assertEqual('master company',data['description'])
 
 
 	def test_deserialize(self):
@@ -127,10 +116,10 @@ class TestDKJSON(unittest.TestCase):
 			}
 
 		}
-		kitchen = JsonObject.parse(data,__name__)
-		self.assertTrue(isinstance(kitchen,Company))
-		self.assertEqual('master',kitchen.company_name)
-		self.assertEqual('some description',kitchen.description)
+		company = JsonObject.parse(data,__name__)
+		self.assertTrue(isinstance(company,Company))
+		self.assertEqual('master',company.company_name)
+		self.assertEqual('some description',company.description)
 
 	def test_deserialize_2(self):
 		data = {
@@ -138,57 +127,57 @@ class TestDKJSON(unittest.TestCase):
 			'company-name' : 'master',
 			'description'  : 'some description'
 		}
-		kitchen = JsonObject.parse(data,__name__)
-		self.assertTrue(isinstance(kitchen,Company))
-		self.assertEqual('master',kitchen.company_name)
-		self.assertEqual('some description',kitchen.description)
+		company = JsonObject.parse(data,__name__)
+		self.assertTrue(isinstance(company,Company))
+		self.assertEqual('master',company.company_name)
+		self.assertEqual('some description',company.description)
 
 	def test_deserialize_3(self):
 		data = {
 			'company-name' : 'master',
 			'description'  : 'some description'
 		}
-		kitchen = Company.from_dict(data)
-		self.assertTrue(isinstance(kitchen,Company))
-		self.assertEqual('master',kitchen.company_name)
-		self.assertEqual('some description',kitchen.description)
+		company = Company.from_dict(data)
+		self.assertTrue(isinstance(company,Company))
+		self.assertEqual('master',company.company_name)
+		self.assertEqual('some description',company.description)
 
 	def test_kwargs_constructor(self):
-		kitchen = Company(
+		company = Company(
 			company_name = 'master',
 			description = 'some description'
 		)
 
 		# check accessors
-		self.assertEqual('master',kitchen.company_name)
-		self.assertEqual('some description',kitchen.description)
+		self.assertEqual('master',company.company_name)
+		self.assertEqual('some description',company.description)
 
 		# check internal state
-		self.assertEqual('master',kitchen._company_name)
-		self.assertEqual('some description',kitchen._description)
+		self.assertEqual('master',company._company_name)
+		self.assertEqual('some description',company._description)
 
 	def test_collections(self):
-		serving_book = Sector()
-		serving = Employee(oid='1234',recipe_id='xx1')
+		sector = Sector()
+		employee = Employee(oid='1234',name='xx1')
 
-		serving_book.employees.append(serving)
+		sector.employees.append(employee)
 
-		data = serving_book.to_dict()
+		data = sector.to_dict()
 
 		self.assertTrue(isinstance(data['employees'],list))
 
-		for serving in data['employees']:
-			self.assertEqual('1234',serving['oid'])
-			self.assertEqual('xx1',serving['recipe-id'])
+		for employee in data['employees']:
+			self.assertEqual('1234',employee['oid'])
+			self.assertEqual('xx1',employee['name'])
 
-		new_serving_book = Sector.from_dict(data)
+		new_sector = Sector.from_dict(data)
 
-		self.assertTrue(isinstance(new_serving_book.employees,list))
-		self.assertEqual(1,len(new_serving_book.employees))
+		self.assertTrue(isinstance(new_sector.employees,list))
+		self.assertEqual(1,len(new_sector.employees))
 
-		self.assertTrue(isinstance(new_serving_book.employees[0],Employee))
-		self.assertEqual('1234',new_serving_book.employees[0].oid)
-		self.assertEqual('xx1',new_serving_book.employees[0].recipe_id)
+		self.assertTrue(isinstance(new_sector.employees[0],Employee))
+		self.assertEqual('1234',new_sector.employees[0].oid)
+		self.assertEqual('xx1',new_sector.employees[0].name)
 
 	def test_default(self):
 		k1 = Company()
@@ -201,12 +190,12 @@ class TestDKJSON(unittest.TestCase):
 
 	def test_custom_objects(self):
 
-		kitchen = Company(created=datetime.now())
+		company = Company(created=datetime.now())
 
-		kitchen_dict = kitchen.to_dict()
+		company_dict = company.to_dict()
 
-		self.assertTrue('created' in kitchen_dict)
-		self.assertTrue(isinstance(kitchen_dict['created'],datetime))
+		self.assertTrue('created' in company_dict)
+		self.assertTrue(isinstance(company_dict['created'],datetime))
 
 	def test_handler(self):
 
@@ -273,9 +262,6 @@ class TestDKJSON(unittest.TestCase):
 			obj_str
 		)
 
-
-
-
-
 if __name__ == '__main__':
 	unittest.main()
+
