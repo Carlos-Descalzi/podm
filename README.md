@@ -2,6 +2,7 @@
 
 This library is intended to create objects that easily map to a well defined json format, for cases
 where jsonpickle format is not good.
+Only available for Python3
 
 Some use cases:
 
