@@ -5,7 +5,7 @@ where jsonpickle format is not good.
 
 Some use cases:
 
-
+```
 class Entity(JsonObject):
 	"""
 	A base class for the object model
@@ -36,3 +36,4 @@ company = Company(
 json_data = company.to_dict()
 
 company_2 = Company.from_dict(json_data)
+```
