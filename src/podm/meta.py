@@ -43,21 +43,38 @@ class Property(object):
 
     @property
     def json(self):
+        """
+        JSON Field name, by default is the name of the attribute
+        """
         return self._json
 
     @property
     def type(self):
+        """
+        Vault type, only required when value is instance of JsonObject
+        """
         return self._type
 
     @property
     def default(self):
+        """
+        Default value when object is instantiated.
+        If it is a callable, it will be called to get the new value,
+        otherwise this value will be used as prototype and copied on each instance.
+        """
         return self._default
 
     @property
     def handler(self):
+        """
+        Custom handler for serializing/deserializing this field value.
+        """
         return self._handler
 
     def default_val(self):
+        """
+        Returns a new instance of the default vault for this field.
+        """
         default = self.default
         if callable(default):
             return default()
