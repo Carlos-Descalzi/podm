@@ -39,12 +39,7 @@ class Company(Entity):
 	description = Property()        
 
 class Sector(Entity):
-	employees = Property('employees')
-
-	def __init__(self,**kwargs):
-		super(Sector, self).__init__(**kwargs)
-		# Default value for _employees
-		self._employees = []
+	employees = Property('employees', default=[])
 
 class Employee(Entity):
 	name = Property()
