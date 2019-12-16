@@ -7,6 +7,8 @@ Only available for Python3
 ## Some use case samples
 
 ```
+from podm import JsonObject, Property
+
 class Entity(JsonObject):
 	"""
 	A base class for the object model
