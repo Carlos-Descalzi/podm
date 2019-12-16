@@ -53,3 +53,52 @@ json_data = company.to_dict()
 
 company_2 = Company.from_dict(json_data)
 ```
+## Deserialize a dictionary with no type information.
+
+```
+data = {
+	'company-name' : 'master',
+	'description'  : 'some description'
+}
+company = Company.from_dict(data)
+```
+
+# Deserialize a dictionary with type information
+Uses the same field as jsonpickle.
+
+```
+data = {
+	'py/object' : 'Company',
+	'company-name' : 'master',
+	'description'  : 'some description'
+}
+company = JsonObject.parse(data) 
+```
+
+# Jsonpickle format support
+```
+data = {
+	'py/object' : 'Company',
+	'py/state': {
+		'company-name' : 'master',
+		'description'  : 'some description'
+	}
+}
+company = JsonObject.parse(data) 
+
+```
+
+# Automatically generated getters/setters. 
+If they are declared property accessors will use them instead.
+```
+
+
+company_name = company.get_company_name()
+
+
+# Also property accessors
+company_name = company.company_name
+
+# And private attributes
+company_name = company._company_name
+```
