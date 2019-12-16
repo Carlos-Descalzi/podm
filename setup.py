@@ -4,8 +4,8 @@ with open('README.md','r') as f:
     long_description = f.read()
 
 setuptools.setup(
-    name='podm-cdescalzi',
-    version='0.0.1',
+    name='podm',
+    version='0.0.2',
     author='Carlos Descalzi',
     author_email='carlos.descalzi@gmail.com',
     description='A Object-JSON Document mapper',
