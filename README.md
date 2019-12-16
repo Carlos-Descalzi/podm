@@ -7,14 +7,32 @@ Only available for Python3
 ## Some use case samples
 
 ```
-from podm import JsonObject, Property
+from podm import JsonObject, Property, Handler
+
+class DateTimeHandler(Handler):
+	"""
+	Define a custom handler for datetime objects
+	"""
+	def encode(self, obj):
+		return {
+			'year' : obj.year,
+			'month' : obj.month,
+			'day' : obj.day,
+			'hour' : obj.hour,
+			'minute' : obj.minute,
+			'second' : obj.second,
+			'microsecond' : obj.microsecond
+		}
+
+	def decode(self, obj_data):
+		return datetime(**obj_data)
 
 class Entity(JsonObject):
 	"""
 	A base class for the object model
 	"""
 	oid = Property()
-	created = Property('created', default=datetime.now) # Default value when object is instantiated
+	created = Property('created', handler=DateTimeHandler(), default=datetime.now) # Default value when object is instantiated
 
 class Company(Entity):
 	company_name = Property('company-name') # Specify a different field name in json.
