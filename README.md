@@ -4,7 +4,7 @@ This library is intended to create objects that easily map to a well defined jso
 where jsonpickle format is not good.
 Only available for Python3
 
-Some use cases:
+## Some use case samples
 
 ```
 class Entity(JsonObject):
