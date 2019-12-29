@@ -5,6 +5,10 @@ It is intended as a replacement of jsonpickle for cases where jsonpickle output 
 
 Only available for Python3
 
+## Installation
+
+pip3 install podm
+
 ## Some use case samples
 
 ```
