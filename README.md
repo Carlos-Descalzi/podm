@@ -7,7 +7,9 @@ Only available for Python3
 
 ## Installation
 
-pip3 install podm
+```
+	pip3 install podm
+```
 
 ## Some use case samples
 
