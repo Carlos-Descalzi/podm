@@ -227,6 +227,8 @@ class JsonObject:
             return prop.handler().encode(value)
         elif isinstance(value, JsonObject):
             return value.to_dict(dict_class)
+        elif isinstance(value, OrderedDict):
+            return OrderedDict([(k,self._convert(prop, v, dict_class)) for k, v in value.items()])
         elif isinstance(value, dict):
             return {k:self._convert(prop, v, dict_class) for k, v in value.items()}
         elif isinstance(value, list):

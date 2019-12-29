@@ -63,7 +63,7 @@ data = {
 company = Company.from_dict(data)
 ```
 
-# Deserialize a dictionary with type information
+## Deserialize a dictionary with type information
 Uses the same field as jsonpickle.
 
 ```
@@ -75,7 +75,7 @@ data = {
 company = JsonObject.parse(data) 
 ```
 
-# Jsonpickle format support
+## Jsonpickle format support
 ```
 data = {
 	'py/object' : 'Company',
@@ -88,17 +88,52 @@ company = JsonObject.parse(data)
 
 ```
 
-# Automatically generated getters/setters. 
+## Automatically generated getters/setters. 
 If they are declared property accessors will use them instead.
 ```
 
-
+class Company(JsonObject):
+	company_name = Property('company-name') # Specify a different field name in json.
+	
+# Automatically generated getter
 company_name = company.get_company_name()
-
 
 # Also property accessors
 company_name = company.company_name
 
 # And private attributes
 company_name = company._company_name
+```
+
+## Write custom getters and setters
+```
+
+class Company(JsonObject):
+	company_name = Property('company-name') # Specify a different field name in json.
+
+	def get_company_name(self):
+		print('Getter called!!!')
+		# generated attribute
+		return self._company_name
+
+# So, when calling the property getter ...
+company_name = company.company_name
+
+# will print 'Getter called!!!'
+```
+
+## OrderedDict support
+```
+
+serialized = company.to_dict(OrderedDict)
+# serialized data is instance of OrderedDict
+
+class TestObject(JsonObject):
+	val1 = Property()
+
+obj = TestObject()
+obj.val1 = OrderedDict(key1='value1')
+
+serialized = company.to_dict()
+# serialized will be instance of dict, field 'val1' will be instance of OrderedDict
 ```

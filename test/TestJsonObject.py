@@ -107,7 +107,7 @@ class TestDKJSON(unittest.TestCase):
 		self.assertEqual('master company',data['description'])
 
 
-	def test_deserialize(self):
+	def test_deserialize_no_module(self):
 		data = {
 			'py/object' : 'Company',
 			'py/state'	: {
@@ -121,13 +121,14 @@ class TestDKJSON(unittest.TestCase):
 		self.assertEqual('master',company.company_name)
 		self.assertEqual('some description',company.description)
 
-	def test_deserialize_2(self):
+	def test_deserialize_with_module(self):
 		data = {
-			'py/object' : 'Company',
+			'py/object' : 'TestJsonObject.Company',
+			'py/state' :{
 			'company-name' : 'master',
-			'description'  : 'some description'
+			'description'  : 'some description'}
 		}
-		company = JsonObject.parse(data,__name__)
+		company = JsonObject.parse(data)
 		self.assertTrue(isinstance(company,Company))
 		self.assertEqual('master',company.company_name)
 		self.assertEqual('some description',company.description)
@@ -261,6 +262,26 @@ class TestDKJSON(unittest.TestCase):
 			'TestObject3:val1=Hi;val2=True;val3=None',
 			obj_str
 		)
+
+	def test_ordered_dict(self):
+		class TestObject4(JsonObject):
+			val1 = Property()
+
+		obj = TestObject4()
+		obj.val1 = OrderedDict(
+			key1='value1',
+			key2='value2',
+			key3='value3',
+			key4='value4'
+		)
+		
+		serialized = obj.to_dict(OrderedDict)
+		self.assertTrue(isinstance(serialized,OrderedDict))
+		self.assertTrue(isinstance(serialized['val1'],OrderedDict))
+
+		serialized = obj.to_dict()
+		self.assertFalse(isinstance(serialized,OrderedDict))
+		self.assertTrue(isinstance(serialized['val1'],OrderedDict))
 
 if __name__ == '__main__':
 	unittest.main()
