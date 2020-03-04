@@ -3,6 +3,7 @@ import importlib
 
 from collections import OrderedDict
 from .meta import Property, Handler
+from enum import Enum, IntEnum
 
 class MethodWrapper:
     def __init__(self, target, method):
@@ -57,6 +58,8 @@ class PropertyHandler:
     def field_name(self): return self._field_name
 
     def field_type(self): return self._definition.type
+
+    def enum_as_str(self): return self._definition.enum_as_str
 
     def getter(self): return self._getter
 
@@ -233,6 +236,10 @@ class JsonObject:
             return {k:self._convert(prop, v, dict_class) for k, v in value.items()}
         elif isinstance(value, list):
             return [self._convert(prop, v, dict_class) for v in value]
+        elif isinstance(value, Enum):
+            if not isinstance(value, IntEnum) and prop.enum_as_str():
+                return value.name
+            return value.value
         return value
 
     def after_deserialize(self):
@@ -270,7 +277,17 @@ class JsonObject:
                     if handler:
                         obj[pname] = handler.decode(v)
                     elif field_type:
-                        obj[pname] = field_type.from_dict(v)
+                        if issubclass(field_type, Enum):
+                            if isinstance(v,str):
+                                obj[pname] = field_type[v]
+                            else:
+                                # TODO: is there a better way?
+                                for m in list(field_type):
+                                    if m.value == v:
+                                        obj[pname] = m
+                                        break
+                        else:
+                            obj[pname] = field_type.from_dict(v)
                     else:
                         obj[pname] = JsonObject.parse(v, cls.__module__)
         

@@ -27,7 +27,7 @@ class Property(object):
     It allows to customize the json field name and the type
     used to deserialize the object.
     """
-    def __init__(self, json=None, type=None, default=None, handler=None):
+    def __init__(self, json=None, type=None, default=None, handler=None, enum_as_str=False):
         """
         Parameters:
         json: The json field name, can be different from the field name.
@@ -40,6 +40,7 @@ class Property(object):
         self._type = type
         self._default = default
         self._handler = handler
+        self._enum_as_str = enum_as_str
 
     @property
     def json(self):
@@ -70,6 +71,13 @@ class Property(object):
         Custom handler for serializing/deserializing this field value.
         """
         return self._handler
+
+    @property
+    def enum_as_str(self):
+        """
+        Determines if enums must be handled as string or int
+        """
+        return self._enum_as_str
 
     def default_val(self):
         """

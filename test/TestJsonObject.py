@@ -283,6 +283,72 @@ class TestDKJSON(unittest.TestCase):
 		self.assertFalse(isinstance(serialized,OrderedDict))
 		self.assertTrue(isinstance(serialized['val1'],OrderedDict))
 
+	def test_yaml(self):
+		class TestObject4(JsonObject):
+			val1 = Property()
+			val2 = Property()
+		obj = TestObject4()
+		obj.val1 = {'key1':'val1'}
+		obj.val2 = [1,2,3]
+		import yaml
+		print()
+		print(yaml.dump(obj.to_dict()))
+
+	def test_enums_str(self):
+		from enum import Enum, auto
+		class Enum1(Enum):
+			VAL1 = 1
+			VAL2 = 2
+
+		class TestObject(JsonObject):
+			val = Property(type=Enum1, enum_as_str=True)
+
+		obj = TestObject()
+		obj.val = Enum1.VAL1
+
+		data = obj.to_dict()
+		self.assertEqual('VAL1',data['val'])
+
+		obj2 = TestObject.from_dict(data)
+		self.assertEqual(Enum1.VAL1, obj2.val)
+
+	def test_enums_int(self):
+		from enum import Enum, auto
+		class Enum1(Enum):
+			VAL1 = 1
+			VAL2 = 2
+
+		class TestObject(JsonObject):
+			val = Property(type=Enum1)
+
+		obj = TestObject()
+		obj.val = Enum1.VAL1
+		
+		data = obj.to_dict()
+		self.assertEqual(1,data['val'])
+
+		obj2 = TestObject.from_dict(data)
+		self.assertEqual(Enum1.VAL1, obj2.val)
+
+	def test_int_enums_int(self):
+		from enum import IntEnum, auto
+		class Enum1(IntEnum):
+			VAL1 = 1
+			VAL2 = 2
+
+		class TestObject(JsonObject):
+			val = Property(type=Enum1)
+
+		obj = TestObject()
+		obj.val = Enum1.VAL1
+
+		data = obj.to_dict()
+		self.assertEqual(1,data['val'])
+		self.assertFalse(isinstance(data['val'],IntEnum))
+
+		obj2 = TestObject.from_dict(data)
+		self.assertEqual(Enum1.VAL1, obj2.val)
+
 if __name__ == '__main__':
 	unittest.main()
 
