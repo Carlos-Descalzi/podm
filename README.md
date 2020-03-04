@@ -1,8 +1,15 @@
-# PODM: (P)ython (O)bject-json (D)ocument (M)apper
+# PODM: (P)ython (O)bject - (D)ictionary (M)apper
 
-This library is intended to create objects that easily map to a well defined json format, for cases
-where jsonpickle format is not good.
+This library is intended to create objects that easily serialize to dictionaries that can be later stored as JSON or YAML.
+It is intended as a replacement of jsonpickle for cases where jsonpickle output format is not good at all.
+
 Only available for Python3
+
+## Installation
+
+```
+	pip3 install podm
+```
 
 ## Some use case samples
 
