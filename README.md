@@ -144,3 +144,34 @@ obj.val1 = OrderedDict(key1='value1')
 serialized = company.to_dict()
 # serialized will be instance of dict, field 'val1' will be instance of OrderedDict
 ```
+### Enum support
+It is possible to decide how to serialize/deserialize enums.
+```
+class InvoiceType(Enum):
+	TYPE_A = auto()
+	TYPE_B = auto()
+
+
+class Invoice(JsonObject):
+	invoice_type = Property(type=InvoiceType, enum_as_str=True)
+
+
+invoice = Invoice(invoice_type=InvoiceType.TYPE_A)
+
+serialized = invoice.to_dict()
+
+print(serialized['invice_type'])
+# Will print 'TYPE_A'
+
+class Invoice(JsonObject):
+	invoice_type = Property(type=InvoiceType)
+
+
+invoice = Invoice(invoice_type=InvoiceType.TYPE_A)
+
+serializd = invoice.to_dict()
+print(serialized['invoice_type'])
+# Will print 1
+
+```
+
