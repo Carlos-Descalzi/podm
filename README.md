@@ -148,8 +148,8 @@ serialized = company.to_dict()
 It is possible to decide how to serialize/deserialize enums.
 ```
 class InvoiceType(Enum):
-	TYPE_A = auto()
-	TYPE_B = auto()
+	TYPE_A = 1
+	TYPE_B = 2
 
 
 class Invoice(JsonObject):
