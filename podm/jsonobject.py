@@ -97,6 +97,18 @@ class JsonObject:
         return cls._properties.keys()
 
     @classmethod
+    def properties(cls):
+        cls._check_init_class()
+        return cls._properties
+
+    @classmethod
+    def object_type_name(cls):
+        """
+        Returns the complete type name with module as prefix.
+        """
+        return '%s.%s' % (cls.__module__, cls.__name__)
+
+    @classmethod
     def json_field_names(cls):
         """
         Returns the list of json field names
@@ -131,17 +143,16 @@ class JsonObject:
         return str(self)
 
     def __getattribute__(self, name):
-        if name in ['__class__', '__dict__', '_properties', '_accessors']:
-            return object.__getattribute__(self, name)
+        if name not in ['__class__', '__dict__', '_properties', '_accessors']:
 
-        if name in self._properties:
-            handler = self._properties[name]
-            return handler.get(self)
-        
-        if name in self._accessors:
-            return MethodWrapper(self, self._accessors[name])
+            if name in self._properties:
+                handler = self._properties[name]
+                return handler.get(self)
+            
+            if name in self._accessors:
+                return MethodWrapper(self, self._accessors[name])
 
-        return object.__getattribute__(self, name)
+        return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
         """
@@ -151,6 +162,12 @@ class JsonObject:
         if name != '_properties' and name[0] != '_':
             if name in self._properties:
                 self._properties[name].set(self, value)
+            elif name in self.__class__.__dict__:
+                prop = self.__class__.__dict__[name]
+                if isinstance(prop, property) and prop.fset:
+                    prop.fset(self, value)
+                else:
+                    raise AttributeError(name)
             else:
                 raise AttributeError(name)
         else:
@@ -162,7 +179,7 @@ class JsonObject:
         """
         if name == '__init__':
             return self.__class__.__dict__['__init__']
-        
+
         if name in self._properties:
             return self._properties[name].get(self)
 

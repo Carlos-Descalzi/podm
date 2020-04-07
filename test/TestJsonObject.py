@@ -63,7 +63,7 @@ class TestObject(JsonObject):
 	def _after_deserialize(self):
 		self._deserialized = True
 
-class TestDKJSON(unittest.TestCase):
+class TestJsonObject(unittest.TestCase):
 
 	def test_properties(self):
 		self.assertEqual(set(Entity.property_names()),set(['oid','created']))
@@ -348,6 +348,36 @@ class TestDKJSON(unittest.TestCase):
 
 		obj2 = TestObject.from_dict(data)
 		self.assertEqual(Enum1.VAL1, obj2.val)
+
+	def test_plain_props(self):
+
+		class TestObject(JsonObject):
+			prop1 = Property()
+
+			def __init__(self, **kwargs):
+				super().__init__(**kwargs)
+				self._prop2 = None
+
+			def set_prop2(self, prop2):
+				self._prop2 = prop2
+
+			def get_prop2(self):
+				return self._prop2
+
+			prop2 = property(get_prop2, set_prop2)
+
+
+		obj = TestObject()
+
+		self.assertIsNone(obj.prop2)
+		try:
+			obj.prop2 = 1
+		except AttributeError:
+			self.assertTrue(False)
+
+		val = obj.prop2
+
+		self.assertEqual(1, val)
 
 if __name__ == '__main__':
 	unittest.main()
