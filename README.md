@@ -13,7 +13,7 @@ Only available for Python3
 
 ## Some use case samples
 
-```
+```python
 from podm import JsonObject, Property, Handler
 
 class DateTimeHandler(Handler):
@@ -62,7 +62,7 @@ company_2 = Company.from_dict(json_data)
 ```
 ## Deserialize a dictionary with no type information.
 
-```
+```python
 data = {
 	'company-name' : 'master',
 	'description'  : 'some description'
@@ -73,7 +73,7 @@ company = Company.from_dict(data)
 ## Deserialize a dictionary with type information
 Uses the same field as jsonpickle.
 
-```
+```python
 data = {
 	'py/object' : 'Company',
 	'company-name' : 'master',
@@ -83,7 +83,7 @@ company = JsonObject.parse(data)
 ```
 
 ## Jsonpickle format support
-```
+```python
 data = {
 	'py/object' : 'Company',
 	'py/state': {
@@ -97,7 +97,7 @@ company = JsonObject.parse(data)
 
 ## Automatically generated getters/setters. 
 If they are declared property accessors will use them instead.
-```
+```python
 
 class Company(JsonObject):
 	company_name = Property('company-name') # Specify a different field name in json.
@@ -113,7 +113,7 @@ company_name = company._company_name
 ```
 
 ## Write custom getters and setters
-```
+```python
 
 class Company(JsonObject):
 	company_name = Property('company-name') # Specify a different field name in json.
@@ -130,7 +130,7 @@ company_name = company.company_name
 ```
 
 ## OrderedDict support
-```
+```python
 
 serialized = company.to_dict(OrderedDict)
 # serialized data is instance of OrderedDict
@@ -146,7 +146,7 @@ serialized = company.to_dict()
 ```
 ### Enum support
 It is possible to decide how to serialize/deserialize enums.
-```
+```python
 class InvoiceType(Enum):
 	TYPE_A = 1
 	TYPE_B = 2
