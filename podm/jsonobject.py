@@ -222,9 +222,11 @@ class JsonObject:
         result = dict_class()
 
         result['py/object'] = '%s.%s' % (self.__class__.__module__, self.__class__.__name__)
-        #result['py/state'] = self.get_state_dict(dict_class)
 
-        result.update(self.get_state_dict(dict_class))
+        if hasattr(self,'__jsonpickle_format__') and self.__jsonpickle_format__:
+            result['py/state'] = self.get_state_dict(dict_class)
+        else:
+            result.update(self.get_state_dict(dict_class))
             
         return result
 

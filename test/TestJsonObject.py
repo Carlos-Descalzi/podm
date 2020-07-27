@@ -379,6 +379,28 @@ class TestJsonObject(unittest.TestCase):
 
 		self.assertEqual(1, val)
 
+
+	def test_jsonpickle_format(self):
+
+            class TestObject(JsonObject):
+                
+                __jsonpickle_format__ = True
+
+                prop1 = Property()
+
+            obj = TestObject()
+            obj.prop1 = 'hello'
+
+            data = obj.to_dict()
+
+            self.assertIn('py/object', data)
+            self.assertIn('py/state', data)
+
+            self.assertIn('prop1',data['py/state'])
+            self.assertEqual('hello',data['py/state']['prop1'])
+
+
+
 if __name__ == '__main__':
 	unittest.main()
 
