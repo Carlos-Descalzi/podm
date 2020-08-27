@@ -70,6 +70,10 @@ class TestObject(JsonObject):
         self._deserialized = True
 
 
+class TestObject2(JsonObject):
+    property1 = Property()
+
+
 class TestJsonObject(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
@@ -403,6 +407,19 @@ class TestJsonObject(unittest.TestCase):
 
         deserialized = TestObject.from_dict(serialized, processor=UpperCaseProcessor())
         self.assertEqual("hello!!", deserialized.property1)
+
+    def test_nested(self):
+
+        test_obj = TestObject2()
+        test_obj.property1 = "hello"
+
+        data = {"obj": test_obj.to_dict()}
+
+        parsed = JsonObject.parse(data)
+
+        self.assertIsInstance(parsed, dict)
+        self.assertIn("obj", parsed)
+        self.assertIsInstance(parsed["obj"], TestObject2)
 
 
 if __name__ == "__main__":
