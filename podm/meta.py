@@ -1,25 +1,30 @@
-__author__ = 'Carlos Descalzi'
+# vim:ts=4:sw=4:expandtab
+__author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
+from typing import Any, Mapping
 import copy
+
 
 class Handler(metaclass=ABCMeta):
     """
     Interface for custom serialization handlers
     """
+
     @abstractmethod
-    def encode(self, value):
+    def encode(self, value: Any) -> Any:
         """
         Returns a json-friendly representation of the given value
         """
         return value
 
     @abstractmethod
-    def decode(self, value_dict):
+    def decode(self, value_dict: Any) -> Any:
         """
         Converts back the dictionary into a desired type.
         """
         return value_dict
+
 
 class Property(object):
     """
@@ -27,7 +32,10 @@ class Property(object):
     It allows to customize the json field name and the type
     used to deserialize the object.
     """
-    def __init__(self, json=None, type=None, default=None, handler=None, enum_as_str=False):
+
+    def __init__(
+        self, json=None, type=None, default=None, handler=None, enum_as_str=False
+    ):
         """
         Parameters:
         json: The json field name, can be different from the field name.
@@ -43,7 +51,7 @@ class Property(object):
         self._enum_as_str = enum_as_str
 
     @property
-    def json(self):
+    def json(self) -> str:
         """
         JSON Field name, by default is the name of the attribute
         """
@@ -57,7 +65,7 @@ class Property(object):
         return self._type
 
     @property
-    def default(self):
+    def default(self) -> Any:
         """
         Default value when object is instantiated.
         If it is a callable, it will be called to get the new value,
@@ -66,20 +74,20 @@ class Property(object):
         return self._default
 
     @property
-    def handler(self):
+    def handler(self) -> Handler:
         """
         Custom handler for serializing/deserializing this field value.
         """
         return self._handler
 
     @property
-    def enum_as_str(self):
+    def enum_as_str(self) -> bool:
         """
         Determines if enums must be handled as string or int
         """
         return self._enum_as_str
 
-    def default_val(self):
+    def default_val(self) -> Any:
         """
         Returns a new instance of the default vault for this field.
         """
