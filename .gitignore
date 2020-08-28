@@ -3,3 +3,5 @@ __pycache__
 build/
 dist/
 podm.egg-info/
+garbage/
+*.code-workspace
