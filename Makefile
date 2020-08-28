@@ -1,5 +1,5 @@
 .PHONY: \
-	lint clean build push
+	lint clean build push tests
 
 
 all: clean build
@@ -12,7 +12,7 @@ build: lint
 push: build
 	python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
 
-test:
+tests:
 	nosetests test/
 
 lint:
