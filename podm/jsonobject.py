@@ -3,9 +3,8 @@ __author__ = "Carlos Descalzi"
 
 import copy
 import importlib
-
 from collections import OrderedDict
-from .meta import Property, Handler
+from .meta import Property, Handler, ArrayOf, MapOf
 from .processor import DefaultProcessor
 from enum import Enum, IntEnum
 
@@ -89,7 +88,6 @@ class PropertyHandler:
 
 
 class JsonObject:
-
     __jsonpickle_format__ = False
     """
     Base class for objects to be persisted as JSON.
@@ -323,6 +321,9 @@ class JsonObject:
         of JSON data. The object type is infered from the class from where this
         class method has been invoked
         """
+        if jsondata is None:
+            return None
+
         obj = JsonObject.__new__(cls)
 
         constructor = JsonObject._find_constructor(cls)
@@ -337,8 +338,8 @@ class JsonObject:
             if k not in ["py/object", "_id"]:
                 k, v = processor.when_from_dict(k, v)
 
-                pname, prop = properties.get(k)
-                if prop:
+                if k in properties:
+                    pname, prop = properties.get(k)
 
                     handler = prop.handler()
                     field_type = prop.field_type()
@@ -346,7 +347,14 @@ class JsonObject:
                     if handler:
                         obj[pname] = handler.decode(v)
                     elif field_type:
-                        if issubclass(field_type, Enum):
+                        if isinstance(field_type, ArrayOf):
+                            obj[pname] = list(map(field_type.type.from_dict, v))
+                        elif isinstance(field_type, MapOf):
+                            obj[pname] = {
+                                ok: field_type.type.from_dict(ov)
+                                for ok, ov in v.items()
+                            }
+                        elif issubclass(field_type, Enum):
                             if isinstance(v, str):
                                 obj[pname] = field_type[v]
                             else:

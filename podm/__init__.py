@@ -2,5 +2,5 @@
 __author__ = "Carlos Descalzi"
 
 from .jsonobject import JsonObject
-from .meta import Handler, Property
+from .meta import Handler, Property, ArrayOf, MapOf
 from .processor import Processor

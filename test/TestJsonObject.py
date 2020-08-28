@@ -1,6 +1,6 @@
 # vim:ts=4:sw=4:expandtab
 import unittest
-from podm import JsonObject, Property, Handler, Processor
+from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf
 from collections import OrderedDict
 from datetime import datetime
 
@@ -72,6 +72,14 @@ class TestObject(JsonObject):
 
 class TestObject2(JsonObject):
     property1 = Property()
+
+
+class Child(JsonObject):
+    property1 = Property()
+
+
+class Parent(JsonObject):
+    children = Property(type=ArrayOf(Child))
 
 
 class TestJsonObject(unittest.TestCase):
@@ -420,6 +428,16 @@ class TestJsonObject(unittest.TestCase):
         self.assertIsInstance(parsed, dict)
         self.assertIn("obj", parsed)
         self.assertIsInstance(parsed["obj"], TestObject2)
+
+    def test_explicity_typing_in_array(self):
+
+        data = {"children": [{"property1": "value1"}]}
+
+        obj = Parent.from_dict(data)
+
+        self.assertIsNotNone(obj)
+        self.assertEqual(1, len(obj.children))
+        self.assertIsInstance(obj.children[0], Child)
 
 
 if __name__ == "__main__":

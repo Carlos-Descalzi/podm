@@ -26,6 +26,31 @@ class Handler(metaclass=ABCMeta):
         return value_dict
 
 
+class CollectionOf:
+    def __init__(self, type):
+        self._type = type
+
+    @property
+    def type(self):
+        return self._type
+
+
+class ArrayOf(CollectionOf):
+    """
+    Describe an array of a given type.
+    """
+
+    pass
+
+
+class MapOf(CollectionOf):
+    """
+    Describe a map a given value type.
+    """
+
+    pass
+
+
 class Property(object):
     """
     Defines a property for a JSON object
