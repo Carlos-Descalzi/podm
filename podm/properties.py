@@ -4,8 +4,8 @@ __author__ = "Carlos Descalzi"
 from abc import ABCMeta, abstractmethod
 from enum import Enum, IntEnum
 
-class PropertyHandler:
 
+class PropertyHandler:
     @abstractmethod
     def set(self, target, value):
         pass
@@ -35,8 +35,8 @@ class PropertyHandler:
     def field_type(self):
         return None
 
-class RichPropertyHandler(PropertyHandler):
 
+class RichPropertyHandler(PropertyHandler):
     @abstractmethod
     def init(self, target, value):
         pass
@@ -61,6 +61,7 @@ class RichPropertyHandler(PropertyHandler):
     def setter_name(self):
         pass
 
+
 class DefaultSetter:
     def __init__(self, field_name):
         self._field_name = field_name
@@ -68,12 +69,14 @@ class DefaultSetter:
     def __call__(self, target, value):
         target.__dict__[self._field_name] = value
 
+
 class DefaultGetter:
     def __init__(self, field_name):
         self._field_name = field_name
 
     def __call__(self, target):
         return target.__dict__[self._field_name]
+
 
 class DefaultPropertyHandler(RichPropertyHandler):
     def __init__(self, obj_type, name, definition):

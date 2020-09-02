@@ -12,6 +12,7 @@ from enum import Enum, IntEnum
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
 
+
 def _find_constructor(obj_class):
     if "__init__" in obj_class.__dict__:
         return obj_class.__dict__["__init__"]
@@ -22,6 +23,7 @@ def _find_constructor(obj_class):
             return c
 
     return None
+
 
 def _resolve_obj_type(type_name, module_name):
 
@@ -36,10 +38,11 @@ def _resolve_obj_type(type_name, module_name):
         module = importlib.import_module(module_name)
         return module.__getattribute__(type_name)
 
+
 def _get_class_hierarchy(cls):
     current_class = cls
     hierarchy = []
-    while hasattr(current_class,'__json_object__'):
+    while hasattr(current_class, "__json_object__"):
         hierarchy.insert(0, current_class)
         current_class = current_class.__bases__[0]
     return hierarchy
@@ -55,12 +58,11 @@ class MethodWrapper:
 
 
 class Introspector:
-
     def get_properties(self, obj_class):
         pass
 
-class DefaultIntrospector(Introspector):
 
+class DefaultIntrospector(Introspector):
     def get_properties(self, obj_class):
 
         properties = OrderedDict()
@@ -77,13 +79,15 @@ class DefaultIntrospector(Introspector):
 
         return properties
 
+
 class BaseJsonObject:
     """
     Base support class for converting objects to json.
     """
+
     __json_object__ = True
     __jsonpickle_format__ = False
-    
+
     _introspector = DefaultIntrospector()
 
     def __new__(cls, **kwargs):
@@ -107,7 +111,7 @@ class BaseJsonObject:
         Perform the class initialization. Properties information are kept in the class
         """
         if not "_properties" in cls.__dict__:
-            cls._properties = cls._introspector.get_properties(cls) 
+            cls._properties = cls._introspector.get_properties(cls)
 
     @classmethod
     def property_names(cls):
@@ -168,7 +172,7 @@ class BaseJsonObject:
         """
         result = dict_class()
         for pname, prop in self._properties.items():
-            if hasattr(self,'__getitem__'):
+            if hasattr(self, "__getitem__"):
                 val = self[pname]
             else:
                 val = prop.get(self)
@@ -229,10 +233,10 @@ class BaseJsonObject:
         data = jsondata.get("py/state", jsondata)
 
         def _set(obj, pname, prop, value):
-            if hasattr(obj,'__setitem__'):
+            if hasattr(obj, "__setitem__"):
                 obj[pname] = value
             else:
-                prop.set(obj,value)
+                prop.set(obj, value)
 
         for k, v in data.items():
             if k not in ["py/object", "_id"]:
@@ -244,25 +248,35 @@ class BaseJsonObject:
                     field_type = prop.field_type()
 
                     if prop.has_handler():
-                        _set(obj, pname,prop,prop.decode(v))
+                        _set(obj, pname, prop, prop.decode(v))
                     elif field_type:
                         if isinstance(field_type, ArrayOf):
-                            _set(obj, pname, prop, list(map(field_type.type.from_dict, v)))
+                            _set(
+                                obj,
+                                pname,
+                                prop,
+                                list(map(field_type.type.from_dict, v)),
+                            )
                         elif isinstance(field_type, MapOf):
-                            _set(obj, pname, prop, {
-                                ok: field_type.type.from_dict(ov)
-                                for ok, ov in v.items()
-                            })
+                            _set(
+                                obj,
+                                pname,
+                                prop,
+                                {
+                                    ok: field_type.type.from_dict(ov)
+                                    for ok, ov in v.items()
+                                },
+                            )
                         elif issubclass(field_type, Enum):
                             if isinstance(v, str):
                                 _set(obj, pname, prop, field_type[v])
-                                #obj[pname] = field_type[v]
+                                # obj[pname] = field_type[v]
                             else:
                                 # TODO: is there a better way?
                                 for m in list(field_type):
                                     if m.value == v:
                                         _set(obj, pname, prop, m)
-                                        #obj[pname] = m
+                                        # obj[pname] = m
                                         break
                         else:
                             _set(obj, pname, prop, field_type.from_dict(v))
@@ -299,6 +313,7 @@ class BaseJsonObject:
 
         return val
 
+
 class JsonObject(BaseJsonObject):
     """
     This class extends BaseJsonObject by adding features like property accessors and default values
@@ -307,12 +322,14 @@ class JsonObject(BaseJsonObject):
     @classmethod
     def _check_init_class(cls):
         super()._check_init_class()
-        if not '_accessors' in cls.__dict__:
+        if not "_accessors" in cls.__dict__:
             cls._accessors = {}
 
             for p in cls._properties.values():
                 if not isinstance(p, RichPropertyHandler):
-                    raise Exception('This class needs RichPropertyHandler instances to handle properties')
+                    raise Exception(
+                        "This class needs RichPropertyHandler instances to handle properties"
+                    )
                 if p.setter():
                     cls._accessors[p.setter_name()] = p.setter()
                 if p.getter():
@@ -365,7 +382,7 @@ class JsonObject(BaseJsonObject):
         """
         Customized accessor for object attributes
         """
-            
+
         if name == "__init__":
             return self.__class__.__dict__["__init__"]
 
