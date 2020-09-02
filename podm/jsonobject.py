@@ -4,11 +4,45 @@ __author__ = "Carlos Descalzi"
 import copy
 import importlib
 from collections import OrderedDict
+from abc import ABCMeta, abstractmethod
 from .meta import Property, Handler, ArrayOf, MapOf
 from .processor import DefaultProcessor
+from .properties import DefaultPropertyHandler, RichPropertyHandler
 from enum import Enum, IntEnum
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
+
+def _find_constructor(obj_class):
+    if "__init__" in obj_class.__dict__:
+        return obj_class.__dict__["__init__"]
+
+    for item in obj_class.__bases__:
+        c = _find_constructor(item)
+        if c:
+            return c
+
+    return None
+
+def _resolve_obj_type(type_name, module_name):
+
+    if "." in type_name:
+        i = type_name.rfind(".")
+        mod_name = type_name[0:i]
+        obj_type = type_name[i + 1 :]
+
+        module = importlib.import_module(mod_name)
+        return module.__getattribute__(obj_type)
+    else:
+        module = importlib.import_module(module_name)
+        return module.__getattribute__(type_name)
+
+def _get_class_hierarchy(cls):
+    current_class = cls
+    hierarchy = []
+    while hasattr(current_class,'__json_object__'):
+        hierarchy.insert(0, current_class)
+        current_class = current_class.__bases__[0]
+    return hierarchy
 
 
 class MethodWrapper:
@@ -20,84 +54,43 @@ class MethodWrapper:
         return self._method(self._target, *args, **kwargs)
 
 
-class DefaultSetter:
-    def __init__(self, field_name):
-        self._field_name = field_name
+class Introspector:
 
-    def __call__(self, target, value):
-        target.__dict__[self._field_name] = value
+    def get_properties(self, obj_class):
+        pass
 
+class DefaultIntrospector(Introspector):
 
-class DefaultGetter:
-    def __init__(self, field_name):
-        self._field_name = field_name
+    def get_properties(self, obj_class):
 
-    def __call__(self, target):
-        return target.__dict__[self._field_name]
+        properties = OrderedDict()
+        for _class in _get_class_hierarchy(obj_class):
+            class_properties = OrderedDict(
+                [
+                    (k, DefaultPropertyHandler(_class, k, v))
+                    for k, v in _class.__dict__.items()
+                    if isinstance(v, Property)
+                ]
+            )
 
+            properties.update(class_properties)
 
-class PropertyHandler:
-    def __init__(self, obj_type, name, definition):
-        self._name = name
-        self._definition = definition
-        self._field_name = "_%s" % name
-        self._setter_name = "set_%s" % name
-        self._getter_name = "get_%s" % name
+        return properties
 
-        getter = obj_type.__dict__.get(self._getter_name)
-        self._getter = getter or DefaultGetter(self._field_name)
-
-        setter = obj_type.__dict__.get(self._setter_name)
-        self._setter = setter or DefaultSetter(self._field_name)
-
-    def init(self, target, value):
-        self.set(target, value or self._definition.default_val())
-
-    def set(self, target, value):
-        self._setter(target, value)
-
-    def get(self, target):
-        return self._getter(target)
-
-    def json(self):
-        return self._definition.json or self._name
-
-    def handler(self):
-        return self._definition.handler
-
-    def field_name(self):
-        return self._field_name
-
-    def field_type(self):
-        return self._definition.type
-
-    def enum_as_str(self):
-        return self._definition.enum_as_str
-
-    def getter(self):
-        return self._getter
-
-    def getter_name(self):
-        return self._getter_name
-
-    def setter(self):
-        return self._setter
-
-    def setter_name(self):
-        return self._setter_name
-
-
-class JsonObject:
+class BaseJsonObject:
+    """
+    Base support class for converting objects to json.
+    """
+    __json_object__ = True
     __jsonpickle_format__ = False
-    """
-    Base class for objects to be persisted as JSON.
-    """
+    
+    _introspector = DefaultIntrospector()
 
     def __new__(cls, **kwargs):
-
         cls._check_init_class()
         obj = object.__new__(cls)
         obj.__init__(**kwargs)
+
         return obj
 
     def __init__(self, **kwargs):
@@ -107,6 +100,14 @@ class JsonObject:
         """
         for name, prop in self._properties.items():
             prop.init(self, kwargs.get(name))
+
+    @classmethod
+    def _check_init_class(cls):
+        """
+        Perform the class initialization. Properties information are kept in the class
+        """
+        if not "_properties" in cls.__dict__:
+            cls._properties = cls._introspector.get_properties(cls) 
 
     @classmethod
     def property_names(cls):
@@ -122,13 +123,6 @@ class JsonObject:
         return cls._properties
 
     @classmethod
-    def object_type_name(cls):
-        """
-        Returns the complete type name with module as prefix.
-        """
-        return "%s.%s" % (cls.__module__, cls.__name__)
-
-    @classmethod
     def json_field_names(cls):
         """
         Returns the list of json field names
@@ -137,30 +131,192 @@ class JsonObject:
         return [p.json() for p in cls._properties.values()]
 
     @classmethod
+    def object_type_name(cls):
+        """
+        Returns the complete type name with module as prefix.
+        """
+        return "%s.%s" % (cls.__module__, cls.__name__)
+
+    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+        """
+        Returns the object as a JSON-friendly dictionary.
+        Allows specify the dictionary class for the case when
+        is required to use an ordered dictionary.
+        The result dictionary contains a field 'py/object' holding the module and class name
+        Parameters:
+            dict_class: the type of dictionary object instantiated to return the data, default dict
+            processor: A processor for key/value pairs
+        """
+        result = dict_class()
+
+        result["py/object"] = self.object_type_name()
+
+        if self.__jsonpickle_format__:
+            result["py/state"] = self.get_state_dict(dict_class, processor)
+        else:
+            result.update(self.get_state_dict(dict_class, processor))
+
+        return result
+
+    def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+        """
+        Returns the JSON-like dictionary containing the state of this class.
+        The result dictionary does not provide object information.
+        Parameters:
+            dict_class: the type of dictionary object instantiated to return the data, default dict
+            processor: A processor for key/value pairs
+        """
+        result = dict_class()
+        for pname, prop in self._properties.items():
+            if hasattr(self,'__getitem__'):
+                val = self[pname]
+            else:
+                val = prop.get(self)
+
+            val = self._convert(prop, val, dict_class, processor)
+            key, val = processor.when_to_dict(prop.json(), val)
+            result[key] = val
+        return result
+
+    def after_deserialize(self):
+        """
+        Callback to notify when the object has been instantiated and properly
+        deserialized from a json representation
+        """
+        pass
+
+    def _convert(self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+        if prop.has_handler():
+            return prop.encode(value)
+        elif isinstance(value, JsonObject):
+            return value.to_dict(dict_class, processor)
+        elif isinstance(value, OrderedDict):
+            return OrderedDict(
+                [
+                    (k, self._convert(prop, v, dict_class, processor))
+                    for k, v in value.items()
+                ]
+            )
+        elif isinstance(value, dict):
+            processed = dict([processor.when_to_dict(k, v) for k, v in value.items()])
+            return {k: self._convert(prop, v, dict_class) for k, v in processed.items()}
+        elif isinstance(value, list):
+            return [self._convert(prop, v, dict_class) for v in value]
+        elif isinstance(value, Enum):
+            if not isinstance(value, IntEnum) and prop.enum_as_str():
+                return value.name
+            return value.value
+        return value
+
+    @classmethod
+    def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR):
+        """
+        Returns an instance of this class based on a dictionary representation
+        of JSON data. The object type is infered from the class from where this
+        class method has been invoked
+        """
+        if jsondata is None:
+            return None
+
+        obj = cls.__new__(cls)
+
+        constructor = _find_constructor(cls)
+        constructor(obj)
+
+        properties = {v.json(): (k, v) for k, v in obj._properties.items()}
+
+        # For backwards compatibility with jsonpickle
+        data = jsondata.get("py/state", jsondata)
+
+        def _set(obj, pname, prop, value):
+            if hasattr(obj,'__setitem__'):
+                obj[pname] = value
+            else:
+                prop.set(obj,value)
+
+        for k, v in data.items():
+            if k not in ["py/object", "_id"]:
+                k, v = processor.when_from_dict(k, v)
+
+                if k in properties:
+                    pname, prop = properties.get(k)
+
+                    field_type = prop.field_type()
+
+                    if prop.has_handler():
+                        _set(obj, pname,prop,prop.decode(v))
+                    elif field_type:
+                        if isinstance(field_type, ArrayOf):
+                            _set(obj, pname, prop, list(map(field_type.type.from_dict, v)))
+                        elif isinstance(field_type, MapOf):
+                            _set(obj, pname, prop, {
+                                ok: field_type.type.from_dict(ov)
+                                for ok, ov in v.items()
+                            })
+                        elif issubclass(field_type, Enum):
+                            if isinstance(v, str):
+                                _set(obj, pname, prop, field_type[v])
+                                #obj[pname] = field_type[v]
+                            else:
+                                # TODO: is there a better way?
+                                for m in list(field_type):
+                                    if m.value == v:
+                                        _set(obj, pname, prop, m)
+                                        #obj[pname] = m
+                                        break
+                        else:
+                            _set(obj, pname, prop, field_type.from_dict(v))
+                    else:
+                        _set(obj, pname, prop, JsonObject.parse(v, cls.__module__))
+
+        if hasattr(obj, "_after_deserialize"):
+            obj._after_deserialize()
+
+        return obj
+
+    @staticmethod
+    def parse(val, module_name="__main__", processor=_DEFAULT_PROCESSOR):
+        """
+        Parses a dictionary and returns the appropiate object instance.
+        Note the input dictionary must contain 'py/object' field to detect
+        the appropiate object class, otherwise it will return a dictionary 
+        """
+        if isinstance(val, dict):
+            if "py/object" in val:
+                obj_type = _resolve_obj_type(val["py/object"], module_name)
+                state = val.get("py/state", val)  # fallback to the same dictionary
+                return obj_type.from_dict(state, processor)
+            else:
+                processed = dict(
+                    [processor.when_from_dict(k, v) for k, v in val.items()]
+                )
+                return {
+                    k: BaseJsonObject.parse(v, module_name, processor)
+                    for k, v in processed.items()
+                }
+        elif isinstance(val, list):
+            return [JsonObject.parse(v, module_name, processor) for v in val]
+
+        return val
+
+class JsonObject(BaseJsonObject):
+    """
+    This class extends BaseJsonObject by adding features like property accessors and default values
+    """
+
+    @classmethod
     def _check_init_class(cls):
-        """
-        Perform the class initialization. Properties information are kept in the class
-        """
-        if not "_properties" in cls.__dict__:
-            cls._properties = OrderedDict()
+        super()._check_init_class()
+        if not '_accessors' in cls.__dict__:
             cls._accessors = {}
 
-            for _class in cls._get_class_hierarchy():
-                properties = OrderedDict(
-                    [
-                        (k, PropertyHandler(_class, k, v))
-                        for k, v in _class.__dict__.items()
-                        if isinstance(v, Property)
-                    ]
-                )
-
-                cls._accessors.update(
-                    {p.setter_name(): p.setter() for p in properties.values()}
-                )
-                cls._accessors.update(
-                    {p.getter_name(): p.getter() for p in properties.values()}
-                )
-                cls._properties.update(properties)
+            for p in cls._properties.values():
+                if not isinstance(p, RichPropertyHandler):
+                    raise Exception('This class needs RichPropertyHandler instances to handle properties')
+                if p.setter():
+                    cls._accessors[p.setter_name()] = p.setter()
+                if p.getter():
+                    cls._accessors[p.getter_name()] = p.getter()
 
     def __str__(self):
         return (
@@ -175,8 +331,8 @@ class JsonObject:
         return str(self)
 
     def __getattribute__(self, name):
-        if name not in ["__class__", "__dict__", "_properties", "_accessors"]:
 
+        if name not in ["__class__", "__dict__", "_properties", "_accessors"]:
             if name in self._properties:
                 handler = self._properties[name]
                 return handler.get(self)
@@ -209,6 +365,7 @@ class JsonObject:
         """
         Customized accessor for object attributes
         """
+            
         if name == "__init__":
             return self.__class__.__dict__["__init__"]
 
@@ -243,192 +400,3 @@ class JsonObject:
             and self.__class__ == other.__class__
             and self.get_state_dict() == other.get_state_dict()
         )
-
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
-        """
-        Returns the object as a JSON-friendly dictionary.
-        Allows specify the dictionary class for the case when
-        is required to use an ordered dictionary.
-        The result dictionary contains a field 'py/object' holding the module and class name
-        Parameters:
-            dict_class: the type of dictionary object instantiated to return the data, default dict
-            processor: A processor for key/value pairs
-        """
-        result = dict_class()
-
-        result["py/object"] = "%s.%s" % (
-            self.__class__.__module__,
-            self.__class__.__name__,
-        )
-
-        if self.__jsonpickle_format__:
-            result["py/state"] = self.get_state_dict(dict_class, processor)
-        else:
-            result.update(self.get_state_dict(dict_class, processor))
-
-        return result
-
-    def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
-        """
-        Returns the JSON-like dictionary containing the state of this class.
-        The result dictionary does not provide object information.
-        Parameters:
-            dict_class: the type of dictionary object instantiated to return the data, default dict
-            processor: A processor for key/value pairs
-        """
-        result = dict_class()
-        for pname, prop in self._properties.items():
-            val = self[pname]
-            val = self._convert(prop, val, dict_class, processor)
-            key, val = processor.when_to_dict(prop.json(), val)
-            result[key] = val
-        return result
-
-    def after_deserialize(self):
-        """
-        Callback to notify when the object has been instantiated and properly
-        deserialized from a json representation
-        """
-        pass
-
-    def _convert(self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR):
-        if prop.handler():
-            return prop.handler().encode(value)
-        elif isinstance(value, JsonObject):
-            return value.to_dict(dict_class, processor)
-        elif isinstance(value, OrderedDict):
-            return OrderedDict(
-                [
-                    (k, self._convert(prop, v, dict_class, processor))
-                    for k, v in value.items()
-                ]
-            )
-        elif isinstance(value, dict):
-            processed = dict([processor.when_to_dict(k, v) for k, v in value.items()])
-            return {k: self._convert(prop, v, dict_class) for k, v in processed.items()}
-        elif isinstance(value, list):
-            return [self._convert(prop, v, dict_class) for v in value]
-        elif isinstance(value, Enum):
-            if not isinstance(value, IntEnum) and prop.enum_as_str():
-                return value.name
-            return value.value
-        return value
-
-    @classmethod
-    def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR):
-        """
-        Returns an instance of this class based on a dictionary representation
-        of JSON data. The object type is infered from the class from where this
-        class method has been invoked
-        """
-        if jsondata is None:
-            return None
-
-        obj = JsonObject.__new__(cls)
-
-        constructor = JsonObject._find_constructor(cls)
-        constructor(obj)
-
-        properties = {v.json(): (k, v) for k, v in obj._properties.items()}
-
-        # For backwards compatibility with jsonpickle
-        data = jsondata.get("py/state", jsondata)
-
-        for k, v in data.items():
-            if k not in ["py/object", "_id"]:
-                k, v = processor.when_from_dict(k, v)
-
-                if k in properties:
-                    pname, prop = properties.get(k)
-
-                    handler = prop.handler()
-                    field_type = prop.field_type()
-
-                    if handler:
-                        obj[pname] = handler.decode(v)
-                    elif field_type:
-                        if isinstance(field_type, ArrayOf):
-                            obj[pname] = list(map(field_type.type.from_dict, v))
-                        elif isinstance(field_type, MapOf):
-                            obj[pname] = {
-                                ok: field_type.type.from_dict(ov)
-                                for ok, ov in v.items()
-                            }
-                        elif issubclass(field_type, Enum):
-                            if isinstance(v, str):
-                                obj[pname] = field_type[v]
-                            else:
-                                # TODO: is there a better way?
-                                for m in list(field_type):
-                                    if m.value == v:
-                                        obj[pname] = m
-                                        break
-                        else:
-                            obj[pname] = field_type.from_dict(v)
-                    else:
-                        obj[pname] = JsonObject.parse(v, cls.__module__)
-
-        if hasattr(obj, "_after_deserialize"):
-            obj._after_deserialize()
-
-        return obj
-
-    @staticmethod
-    def parse(val, module_name="__main__", processor=_DEFAULT_PROCESSOR):
-        """
-        Parses a dictionary and returns the appropiate object instance.
-        Note the input dictionary must contain 'py/object' field to detect
-        the appropiate object class, otherwise it will return a dictionary 
-        """
-        if isinstance(val, dict):
-            if "py/object" in val:
-                obj_type = JsonObject._resolve_obj_type(val["py/object"], module_name)
-                state = val.get("py/state", val)  # fallback to the same dictionary
-                return obj_type.from_dict(state, processor)
-            else:
-                processed = dict(
-                    [processor.when_from_dict(k, v) for k, v in val.items()]
-                )
-                return {
-                    k: JsonObject.parse(v, module_name, processor)
-                    for k, v in processed.items()
-                }
-        elif isinstance(val, list):
-            return [JsonObject.parse(v, module_name, processor) for v in val]
-
-        return val
-
-    @staticmethod
-    def _find_constructor(obj_class):
-        if "__init__" in obj_class.__dict__:
-            return obj_class.__dict__["__init__"]
-
-        for item in obj_class.__bases__:
-            c = JsonObject._find_constructor(item)
-            if c:
-                return c
-
-        return None
-
-    @staticmethod
-    def _resolve_obj_type(type_name, module_name):
-
-        if "." in type_name:
-            i = type_name.rfind(".")
-            mod_name = type_name[0:i]
-            obj_type = type_name[i + 1 :]
-
-            module = importlib.import_module(mod_name)
-            return module.__getattribute__(obj_type)
-        else:
-            module = importlib.import_module(module_name)
-            return module.__getattribute__(type_name)
-
-    @classmethod
-    def _get_class_hierarchy(cls):
-        current_class = cls
-        hierarchy = []
-        while current_class != JsonObject:
-            hierarchy.insert(0, current_class)
-            current_class = current_class.__bases__[0]
-        return hierarchy
