@@ -190,9 +190,10 @@ class BaseJsonObject:
         pass
 
     def _convert(self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR):
-        if prop.has_handler():
-            return prop.encode(value)
-        elif isinstance(value, JsonObject):
+        handler = prop.handler()
+        if handler:
+            return handler.encode(value)
+        elif isinstance(value, BaseJsonObject):
             return value.to_dict(dict_class, processor)
         elif isinstance(value, OrderedDict):
             return OrderedDict(
@@ -211,6 +212,12 @@ class BaseJsonObject:
                 return value.name
             return value.value
         return value
+
+    def _after_deserialize(self):
+        """
+        Callback to allow do post-deserialization operations on the object.
+        """
+        pass
 
     @classmethod
     def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR):
@@ -232,12 +239,6 @@ class BaseJsonObject:
         # For backwards compatibility with jsonpickle
         data = jsondata.get("py/state", jsondata)
 
-        def _set(obj, pname, prop, value):
-            if hasattr(obj, "__setitem__"):
-                obj[pname] = value
-            else:
-                prop.set(obj, value)
-
         for k, v in data.items():
             if k not in ["py/object", "_id"]:
                 k, v = processor.when_from_dict(k, v)
@@ -245,48 +246,52 @@ class BaseJsonObject:
                 if k in properties:
                     pname, prop = properties.get(k)
 
-                    field_type = prop.field_type()
-
-                    if prop.has_handler():
-                        _set(obj, pname, prop, prop.decode(v))
-                    elif field_type:
-                        if isinstance(field_type, ArrayOf):
-                            _set(
-                                obj,
-                                pname,
-                                prop,
-                                list(map(field_type.type.from_dict, v)),
-                            )
-                        elif isinstance(field_type, MapOf):
-                            _set(
-                                obj,
-                                pname,
-                                prop,
-                                {
-                                    ok: field_type.type.from_dict(ov)
-                                    for ok, ov in v.items()
-                                },
-                            )
-                        elif issubclass(field_type, Enum):
-                            if isinstance(v, str):
-                                _set(obj, pname, prop, field_type[v])
-                                # obj[pname] = field_type[v]
-                            else:
-                                # TODO: is there a better way?
-                                for m in list(field_type):
-                                    if m.value == v:
-                                        _set(obj, pname, prop, m)
-                                        # obj[pname] = m
-                                        break
-                        else:
-                            _set(obj, pname, prop, field_type.from_dict(v))
+                    handler = prop.handler()
+                    if handler:
+                        cls._set_field(obj, pname, prop, handler.decode(v))
+                    elif prop.field_type():
+                        cls._handle_field_type(obj, pname, prop, v)
                     else:
-                        _set(obj, pname, prop, JsonObject.parse(v, cls.__module__))
+                        cls._set_field(
+                            obj, pname, prop, BaseJsonObject.parse(v, cls.__module__)
+                        )
 
-        if hasattr(obj, "_after_deserialize"):
-            obj._after_deserialize()
+        obj._after_deserialize()
 
         return obj
+
+    @classmethod
+    def _set_field(cls, obj, pname, prop, value):
+        if hasattr(obj, "__setitem__"):
+            obj[pname] = value
+        else:
+            prop.set(obj, value)
+
+    @classmethod
+    def _handle_field_type(cls, obj, pname, prop, value):
+        field_type = prop.field_type()
+        if isinstance(field_type, ArrayOf):
+            cls._set_field(
+                obj, pname, prop, list(map(field_type.type.from_dict, value)),
+            )
+        elif isinstance(field_type, MapOf):
+            cls._set_field(
+                obj,
+                pname,
+                prop,
+                {ok: field_type.type.from_dict(ov) for ok, ov in value.items()},
+            )
+        elif issubclass(field_type, Enum):
+            if isinstance(value, str):
+                cls._set_field(obj, pname, prop, field_type[value])
+            else:
+                # TODO: is there a better way?
+                for m in list(field_type):
+                    if m.value == value:
+                        cls._set_field(obj, pname, prop, m)
+                        break
+        else:
+            cls._set_field(obj, pname, prop, field_type.from_dict(value))
 
     @staticmethod
     def parse(val, module_name="__main__", processor=_DEFAULT_PROCESSOR):

@@ -2,7 +2,7 @@
 __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Mapping
+from typing import Any, Mapping, Type
 import copy
 
 
@@ -27,11 +27,11 @@ class Handler(metaclass=ABCMeta):
 
 
 class CollectionOf:
-    def __init__(self, type):
+    def __init__(self, type: Type):
         self._type = type
 
     @property
-    def type(self):
+    def type(self) -> Type:
         return self._type
 
 

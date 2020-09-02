@@ -3,46 +3,68 @@ __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
 from enum import Enum, IntEnum
+from .meta import Handler
+from typing import Any, Type
 
 
-class PropertyHandler:
-    @abstractmethod
-    def set(self, target, value):
-        pass
-
-    @abstractmethod
-    def get(self, target):
-        pass
-
-    @abstractmethod
-    def json(self):
-        pass
-
-    @abstractmethod
-    def field_name(self):
-        pass
-
-    @abstractmethod
-    def has_handler(self):
-        pass
-
-    def encode(self, value):
+class PropertyHandler(metaclass=ABCMeta):
+    def handler(self) -> Handler:
+        """
+        Returns a custom handler for the property value, or None.
+        """
         return None
 
-    def decode(self, value):
+    def field_type(self) -> Type:
+        """
+        Returns the type of the field value, intended when such value
+        wants to be deserialized to a BaseJsonObject, and dictionary
+        has no type information.
+        """
         return None
 
-    def field_type(self):
-        return None
+    @abstractmethod
+    def set(self, target: Any, value: Any):
+        pass
+
+    @abstractmethod
+    def get(self, target: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def json(self) -> str:
+        """
+        Return the actual json name
+        """
+        pass
+
+    @abstractmethod
+    def field_name(self) -> str:
+        """
+        Return the field name.
+        """
+        pass
 
 
 class RichPropertyHandler(PropertyHandler):
+    """
+    Adds features like default property value, enumerator handling and 
+    better property accessor usage
+    """
+
     @abstractmethod
     def init(self, target, value):
+        """
+        Initializes a property with a given value, or 
+        a default value provided by this implementation.
+        """
         pass
 
     @abstractmethod
-    def enum_as_str(self):
+    def enum_as_str(self) -> bool:
+        """
+        Boolean flag that determines if flags are stored/retrieved
+        as string literals or integers.
+        """
         pass
 
     @abstractmethod
@@ -50,7 +72,7 @@ class RichPropertyHandler(PropertyHandler):
         pass
 
     @abstractmethod
-    def getter_name(self):
+    def getter_name(self) -> str:
         pass
 
     @abstractmethod
@@ -58,7 +80,7 @@ class RichPropertyHandler(PropertyHandler):
         pass
 
     @abstractmethod
-    def setter_name(self):
+    def setter_name(self) -> str:
         pass
 
 
@@ -104,14 +126,8 @@ class DefaultPropertyHandler(RichPropertyHandler):
     def json(self):
         return self._definition.json or self._name
 
-    def has_handler(self):
-        return self._definition.handler is not None
-
-    def encode(self, value):
-        return self._definition.handler.encode(value)
-
-    def decode(self, value):
-        return self._definition.handler.decode(value)
+    def handler(self):
+        return self._definition.handler
 
     def field_name(self):
         return self._field_name
