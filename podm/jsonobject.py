@@ -66,10 +66,13 @@ class DefaultIntrospector(Introspector):
     def get_properties(self, obj_class):
 
         properties = OrderedDict()
+
+        handler_class = self.property_handler_class()
+
         for _class in _get_class_hierarchy(obj_class):
             class_properties = OrderedDict(
                 [
-                    (k, DefaultPropertyHandler(_class, k, v))
+                    (k, handler_class(_class, k, v))
                     for k, v in _class.__dict__.items()
                     if isinstance(v, Property)
                 ]
@@ -78,6 +81,9 @@ class DefaultIntrospector(Introspector):
             properties.update(class_properties)
 
         return properties
+
+    def property_handler_class(self):
+        return DefaultPropertyHandler
 
 
 class BaseJsonObject:

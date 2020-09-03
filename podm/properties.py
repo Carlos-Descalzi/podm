@@ -8,6 +8,12 @@ from typing import Any, Type
 
 
 class PropertyHandler(metaclass=ABCMeta):
+
+    def __init__(self, obj_type, name, definition):
+        self._obj_type = obj_type
+        self._name = name
+        self._definition = definition
+
     def handler(self) -> Handler:
         """
         Returns a custom handler for the property value, or None.
@@ -102,8 +108,7 @@ class DefaultGetter:
 
 class DefaultPropertyHandler(RichPropertyHandler):
     def __init__(self, obj_type, name, definition):
-        self._name = name
-        self._definition = definition
+        super().__init__(obj_type, name, definition)
         self._field_name = "_%s" % name
         self._setter_name = "set_%s" % name
         self._getter_name = "get_%s" % name
