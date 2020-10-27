@@ -8,7 +8,6 @@ from typing import Any, Type
 
 
 class PropertyHandler(metaclass=ABCMeta):
-
     def __init__(self, obj_type, name, definition):
         self._obj_type = obj_type
         self._name = name

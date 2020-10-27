@@ -147,7 +147,9 @@ class BaseJsonObject:
         """
         return "%s.%s" % (cls.__module__, cls.__name__)
 
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+    def to_dict(
+        self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True
+    ):
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when
@@ -159,16 +161,20 @@ class BaseJsonObject:
         """
         result = dict_class()
 
-        result["py/object"] = self.object_type_name()
+        if add_type_identifier:
+            result["py/object"] = self.object_type_name()
 
+        state_dict = self.get_state_dict(dict_class, processor, add_type_identifier)
         if self.__jsonpickle_format__:
-            result["py/state"] = self.get_state_dict(dict_class, processor)
+            result["py/state"] = state_dict
         else:
-            result.update(self.get_state_dict(dict_class, processor))
+            result.update(state_dict)
 
         return result
 
-    def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+    def get_state_dict(
+        self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True
+    ):
         """
         Returns the JSON-like dictionary containing the state of this class.
         The result dictionary does not provide object information.
@@ -183,7 +189,7 @@ class BaseJsonObject:
             else:
                 val = prop.get(self)
 
-            val = self._convert(prop, val, dict_class, processor)
+            val = self._convert(prop, val, dict_class, processor, add_type_identifier)
             key, val = processor.when_to_dict(prop.json(), val)
             result[key] = val
         return result
@@ -195,24 +201,42 @@ class BaseJsonObject:
         """
         pass
 
-    def _convert(self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR):
+    def _convert(
+        self,
+        prop,
+        value,
+        dict_class=dict,
+        processor=_DEFAULT_PROCESSOR,
+        add_type_identifier=True,
+    ):
         handler = prop.handler()
         if handler:
             return handler.encode(value)
         elif isinstance(value, BaseJsonObject):
-            return value.to_dict(dict_class, processor)
+            return value.to_dict(dict_class, processor, add_type_identifier)
         elif isinstance(value, OrderedDict):
             return OrderedDict(
                 [
-                    (k, self._convert(prop, v, dict_class, processor))
+                    (
+                        k,
+                        self._convert(
+                            prop, v, dict_class, processor, add_type_identifier
+                        ),
+                    )
                     for k, v in value.items()
                 ]
             )
         elif isinstance(value, dict):
             processed = dict([processor.when_to_dict(k, v) for k, v in value.items()])
-            return {k: self._convert(prop, v, dict_class) for k, v in processed.items()}
+            return {
+                k: self._convert(prop, v, dict_class, processor, add_type_identifier)
+                for k, v in processed.items()
+            }
         elif isinstance(value, list):
-            return [self._convert(prop, v, dict_class) for v in value]
+            return [
+                self._convert(prop, v, dict_class, processor, add_type_identifier)
+                for v in value
+            ]
         elif isinstance(value, Enum):
             if not isinstance(value, IntEnum) and prop.enum_as_str():
                 return value.name
