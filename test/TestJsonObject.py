@@ -10,7 +10,7 @@ class Entity(JsonObject):
     A base class for the object model
     """
 
-    oid = Property("oid")
+    oid = Property("oid", type=str)
     created = Property("created", default=datetime.now)
 
 
@@ -19,8 +19,8 @@ class Company(Entity):
     This class represents a company.
     """
 
-    company_name = Property("company-name")
-    description = Property("description")
+    company_name = Property("company-name", type=str)
+    description = Property("description", type=str)
 
     def __init__(self, **kwargs):
         super(Company, self).__init__(**kwargs)
@@ -86,12 +86,10 @@ class TestJsonObject(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
         self.assertEqual(
-            set(Company.property_names()),
-            set(["oid", "created", "description", "company_name"]),
+            set(Company.property_names()), set(["oid", "created", "description", "company_name"]),
         )
         self.assertEqual(
-            set(Company.json_field_names()),
-            set(["oid", "created", "description", "company-name"]),
+            set(Company.json_field_names()), set(["oid", "created", "description", "company-name"]),
         )
 
     def test_accessors(self):
@@ -199,6 +197,22 @@ class TestJsonObject(unittest.TestCase):
 
         self.assertNotEqual(k1.created, k2.created)
 
+    def test_json_schema(self):
+        import json
+
+        schema = Company.json_schema()
+        self.assertIn("type", schema)
+        self.assertIn("properties", schema)
+        self.assertIn("oid", schema["properties"])
+        self.assertIn("type", schema["properties"]["oid"])
+        self.assertEqual("string", schema["properties"]["oid"]["type"])
+        self.assertIn("created", schema["properties"])
+        self.assertEqual("object", schema["properties"]["created"]["type"])
+        self.assertIn("company-name", schema["properties"])
+        self.assertEqual("string", schema["properties"]["company-name"]["type"])
+        self.assertIn("description", schema["properties"])
+        self.assertEqual("string", schema["properties"]["description"]["type"])
+
     def test_custom_objects(self):
 
         company = Company(created=datetime.now())
@@ -267,9 +281,7 @@ class TestJsonObject(unittest.TestCase):
             val1 = Property()
 
         obj = TestObject4()
-        obj.val1 = OrderedDict(
-            key1="value1", key2="value2", key3="value3", key4="value4"
-        )
+        obj.val1 = OrderedDict(key1="value1", key2="value2", key3="value3", key4="value4")
 
         serialized = obj.to_dict(OrderedDict)
         self.assertTrue(isinstance(serialized, OrderedDict))

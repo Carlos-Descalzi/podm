@@ -4,7 +4,7 @@ __author__ = "Carlos Descalzi"
 from abc import ABCMeta, abstractmethod
 from enum import Enum, IntEnum
 from .meta import Handler
-from typing import Any, Type
+from typing import Any, Type, Mapping
 
 
 class PropertyHandler(metaclass=ABCMeta):
@@ -48,6 +48,30 @@ class PropertyHandler(metaclass=ABCMeta):
         Return the field name.
         """
         pass
+
+    def json_field_type(self):
+        """
+        Converts actual field type into javascript types.
+        Subclasses may extend it
+        """
+        field_type = self.field_type()
+
+        if field_type == str:
+            return "string"
+        elif field_type == bool:
+            return "boolean"
+        elif field_type in [int, float]:
+            return "number"
+        elif field_type == list:
+            return "array"
+        else:
+            return "object"
+
+    def schema(self) -> Mapping:
+        """
+        Returns the json schema definition of the property
+        """
+        return {"type": self.json_field_type()}
 
 
 class RichPropertyHandler(PropertyHandler):
