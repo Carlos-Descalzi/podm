@@ -3,7 +3,11 @@
 This library is intended to create objects that easily serialize to dictionaries that can be later stored as JSON or YAML.
 It is intended as a replacement of jsonpickle for cases where jsonpickle output format is not good at all.
 
-Only available for Python3
+Features:
+* Support for ordered dictionaries or custom mapping classes
+* Custom field serialization/deserialization
+* Validators
+* Json Schema generation
 
 ## Installation
 
@@ -174,4 +178,10 @@ print(serialized['invoice_type'])
 # Will print 1
 
 ```
+### Json Schema generation.
 
+Check test cases for examples.
+
+### Validators.
+
+Check test cases for examples.
