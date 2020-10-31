@@ -3,86 +3,10 @@ import unittest
 from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf
 from collections import OrderedDict
 from datetime import datetime
+from .common import Entity, Company, Sector, Employee, DateTimeHandler, TestObject, TestObject2, Child, Parent
 
 
-class Entity(JsonObject):
-    """
-    A base class for the object model
-    """
-
-    oid = Property("oid", type=str)
-    created = Property("created", default=datetime.now)
-
-
-class Company(Entity):
-    """
-    This class represents a company.
-    """
-
-    company_name = Property("company-name", type=str)
-    description = Property("description", type=str)
-
-    def __init__(self, **kwargs):
-        super(Company, self).__init__(**kwargs)
-        # I use this field only for checking that the field "description"
-        # is accessed from the getter instead of using default accessor.
-        self._used_getter = False
-
-    def get_description(self):
-        # Set _used_getter to True if this getter has been called.
-        self._used_getter = True
-        return self._description
-
-
-class Sector(Entity):
-    employees = Property("employees", default=[])
-
-
-class Employee(Entity):
-    name = Property()
-
-
-class DateTimeHandler(Handler):
-    def encode(self, obj):
-        return {
-            "year": obj.year,
-            "month": obj.month,
-            "day": obj.day,
-            "hour": obj.hour,
-            "minute": obj.minute,
-            "second": obj.second,
-            "microsecond": obj.microsecond,
-        }
-
-    def decode(self, obj_data):
-        return datetime(**obj_data)
-
-
-class TestObject(JsonObject):
-
-    date_time = Property("date-time", handler=DateTimeHandler(), default=datetime.now)
-
-    def __init__(self, **kwargs):
-        JsonObject.__init__(self, **kwargs)
-        self._deserialized = False
-
-    def _after_deserialize(self):
-        self._deserialized = True
-
-
-class TestObject2(JsonObject):
-    property1 = Property()
-
-
-class Child(JsonObject):
-    property1 = Property()
-
-
-class Parent(JsonObject):
-    children = Property(type=ArrayOf(Child))
-
-
-class TestJsonObject(unittest.TestCase):
+class TestSerialization(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
         self.assertEqual(
@@ -119,6 +43,7 @@ class TestJsonObject(unittest.TestCase):
         data = company.to_dict()
 
         self.assertTrue("py/object" in data)
+        print(data["py/object"])
         self.assertTrue("oid" in data)
         self.assertTrue("created" in data)
         self.assertIsNotNone(data["created"])
@@ -139,7 +64,7 @@ class TestJsonObject(unittest.TestCase):
 
     def test_deserialize_with_module(self):
         data = {
-            "py/object": "TestJsonObject.Company",
+            "py/object": "test.common.Company",
             "py/state": {"company-name": "master", "description": "some description"},
         }
         company = JsonObject.parse(data)
@@ -196,22 +121,6 @@ class TestJsonObject(unittest.TestCase):
         self.assertIsNotNone(k2.created)
 
         self.assertNotEqual(k1.created, k2.created)
-
-    def test_json_schema(self):
-        import json
-
-        schema = Company.json_schema()
-        self.assertIn("type", schema)
-        self.assertIn("properties", schema)
-        self.assertIn("oid", schema["properties"])
-        self.assertIn("type", schema["properties"]["oid"])
-        self.assertEqual("string", schema["properties"]["oid"]["type"])
-        self.assertIn("created", schema["properties"])
-        self.assertEqual("object", schema["properties"]["created"]["type"])
-        self.assertIn("company-name", schema["properties"])
-        self.assertEqual("string", schema["properties"]["company-name"]["type"])
-        self.assertIn("description", schema["properties"])
-        self.assertEqual("string", schema["properties"]["description"]["type"])
 
     def test_custom_objects(self):
 
@@ -407,26 +316,6 @@ class TestJsonObject(unittest.TestCase):
 
         self.assertIn("prop1", data["py/state"])
         self.assertEqual("hello", data["py/state"]["prop1"])
-
-    def test_processor(self):
-        class UpperCaseProcessor(Processor):
-            def when_from_dict(self, key, val):
-                return key.lower(), val
-
-            def when_to_dict(self, key, val):
-                return key.upper(), val
-
-        class TestObject(JsonObject):
-            property1 = Property()
-
-        test_object = TestObject()
-        test_object.property1 = "hello!!"
-
-        serialized = test_object.to_dict(processor=UpperCaseProcessor())
-        self.assertIn("PROPERTY1", serialized)
-
-        deserialized = TestObject.from_dict(serialized, processor=UpperCaseProcessor())
-        self.assertEqual("hello!!", deserialized.property1)
 
     def test_nested(self):
 

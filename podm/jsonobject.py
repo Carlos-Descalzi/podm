@@ -9,8 +9,10 @@ from .meta import Property, Handler, ArrayOf, MapOf
 from .processor import DefaultProcessor
 from .properties import DefaultPropertyHandler, RichPropertyHandler
 from enum import Enum, IntEnum
+from .validation import ValidationException, TypeValidator
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
+_DEFAULT_VALIDATOR = TypeValidator()
 
 
 def _find_constructor(obj_class):
@@ -89,6 +91,8 @@ class BaseJsonObject:
 
     __json_object__ = True
     __jsonpickle_format__ = False
+    __validate__ = False
+    __add_type_identifier__ = True
 
     _introspector = DefaultIntrospector()
 
@@ -137,16 +141,23 @@ class BaseJsonObject:
         return [p.json() for p in cls._properties.values()]
 
     @classmethod
-    def json_schema(cls):
+    def schema(cls):
         """
         Returns a dictionary representing the json schema.
         """
-        return OrderedDict(
-            [
-                ("type", "object"),
-                ("properties", OrderedDict([(p.json(), p.schema()) for p in cls._properties.values()])),
-            ]
+        cls._check_init_class()
+
+        properties = OrderedDict([(p.json(), p.schema()) for p in cls._properties.values()])
+        schema = OrderedDict(
+            [("type", "object"), ("properties", OrderedDict([("py/object", {"const": cls.object_type_name()})]),),]
         )
+        if cls.__jsonpickle_format__:
+            schema["properties"]["py/state"] = {"$ref": "#/definitions/state"}
+            schema["definitions"] = {"state": OrderedDict([("type", "object"), ("properties", properties)])}
+        else:
+            schema["properties"].update(properties)
+
+        return schema
 
     @classmethod
     def object_type_name(cls):
@@ -155,7 +166,7 @@ class BaseJsonObject:
         """
         return "%s.%s" % (cls.__module__, cls.__name__)
 
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True):
+    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None):
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when
@@ -166,6 +177,8 @@ class BaseJsonObject:
             processor: A processor for key/value pairs
         """
         result = dict_class()
+
+        add_type_identifier = add_type_identifier or self.__add_type_identifier__
 
         if add_type_identifier:
             result["py/object"] = self.object_type_name()
@@ -180,8 +193,8 @@ class BaseJsonObject:
 
     def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True):
         """
-        Returns the JSON-like dictionary containing the state of this class.
-        The result dictionary does not provide object information.
+        Returns the plain JSON-like dictionary containing the state of this class.
+        The result dictionary does not provide object type information nor any jsonpickle-like field.
         Parameters:
             dict_class: the type of dictionary object instantiated to return the data, default dict
             processor: A processor for key/value pairs
@@ -235,11 +248,15 @@ class BaseJsonObject:
         pass
 
     @classmethod
-    def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR):
+    def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR, validate=None):
         """
         Returns an instance of this class based on a dictionary representation
         of JSON data. The object type is infered from the class from where this
         class method has been invoked
+        Parameters:
+            jsondata: A dictionary structure representing the json data.
+            processor: A custom processor for field deserialization.
+            validate: indicates if should validate or not, overrides class field __validate__
         """
         if jsondata is None:
             return None
@@ -256,8 +273,18 @@ class BaseJsonObject:
 
         primitive = lambda p: p.field_type() in [bool, int, float, str]
 
+        validate = validate or cls.__validate__
+
+        issues = {}
+
+        required = set([k for k, v in properties.values() if not v.allow_none()])
+
         for k, v in data.items():
             if k not in ["py/object", "_id"]:
+                try:
+                    required.remove(k)
+                except:
+                    pass
                 k, v = processor.when_from_dict(k, v)
 
                 if k in properties:
@@ -265,15 +292,37 @@ class BaseJsonObject:
 
                     handler = prop.handler()
                     if handler:
-                        cls._set_field(obj, pname, prop, handler.decode(v))
+                        v = handler.decode(v)
+
+                    if validate:
+                        issue = cls._validate(obj, prop, v)
+                        if issue:
+                            issues[k] = issue
+
                     elif prop.field_type() and not primitive(prop):
                         cls._handle_field_type(obj, pname, prop, v)
                     else:
                         cls._set_field(obj, pname, prop, BaseJsonObject.parse(v, cls.__module__))
 
+        if validate:
+            if required:
+                issues.update({k: f"Field {k} is required" for k in required})
+            if issues:
+                raise ValidationException(issues)
+
         obj._after_deserialize()
 
         return obj
+
+    @classmethod
+    def _validate(cls, obj, prop, value):
+        validator = prop.validator()
+
+        if validator:
+            if validator == "default":
+                validator = _DEFAULT_VALIDATOR
+            return validator.validate(obj, prop.name(), value)
+        return None
 
     @classmethod
     def _set_field(cls, obj, pname, prop, value):

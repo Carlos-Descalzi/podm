@@ -13,6 +13,9 @@ class PropertyHandler(metaclass=ABCMeta):
         self._name = name
         self._definition = definition
 
+    def name(self):
+        return self._name
+
     def handler(self) -> Handler:
         """
         Returns a custom handler for the property value, or None.
@@ -72,6 +75,12 @@ class PropertyHandler(metaclass=ABCMeta):
         Returns the json schema definition of the property
         """
         return {"type": self.json_field_type()}
+
+    def validator(self):
+        return None
+
+    def allow_none(self):
+        return True
 
 
 class RichPropertyHandler(PropertyHandler):
@@ -177,3 +186,9 @@ class DefaultPropertyHandler(RichPropertyHandler):
 
     def setter_name(self):
         return self._setter_name
+
+    def validator(self):
+        return self._definition.validator
+
+    def allow_none(self):
+        return self._definition.allow_none

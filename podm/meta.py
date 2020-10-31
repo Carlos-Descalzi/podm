@@ -59,7 +59,7 @@ class Property(object):
     """
 
     def __init__(
-        self, json=None, type=None, default=None, handler=None, enum_as_str=False
+        self, json=None, type=None, default=None, handler=None, enum_as_str=False, allow_none=True, validator=None
     ):
         """
         Parameters:
@@ -68,12 +68,18 @@ class Property(object):
         default: The default value when an object is instantiated. If it is a function/lambda
             it will invoke it to get a new value, otherwise this value is copied for each instance
         handler: Custom serialization handler for the value contained in the property 
+        enum_as_str: Handle enumerators as strings.
+        allow_none: Allows None as value.
+        validator: Allow specify a validator for this property. Possible values are, None for no validation, 
+            an implementation of Validator interface, or "default" to use default validation.
         """
         self._json = json
         self._type = type
         self._default = default
         self._handler = handler
         self._enum_as_str = enum_as_str
+        self._allow_none = allow_none
+        self._validator = validator
 
     @property
     def json(self) -> str:
@@ -111,6 +117,14 @@ class Property(object):
         Determines if enums must be handled as string or int
         """
         return self._enum_as_str
+
+    @property
+    def validator(self):
+        return self._validator
+
+    @property
+    def allow_none(self):
+        return self._allow_none
 
     def default_val(self) -> Any:
         """
