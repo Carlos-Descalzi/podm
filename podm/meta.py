@@ -59,7 +59,16 @@ class Property(object):
     """
 
     def __init__(
-        self, json=None, type=None, default=None, handler=None, enum_as_str=False, allow_none=True, validator=None
+        self,
+        json=None,
+        type=None,
+        default=None,
+        handler=None,
+        enum_as_str=False,
+        allow_none=True,
+        validator=None,
+        title=None,
+        description=None,
     ):
         """
         Parameters:
@@ -80,6 +89,8 @@ class Property(object):
         self._enum_as_str = enum_as_str
         self._allow_none = allow_none
         self._validator = validator
+        self._title = title
+        self._description = description
 
     @property
     def json(self) -> str:
@@ -136,3 +147,11 @@ class Property(object):
         elif default is not None:
             return copy.deepcopy(default)
         return None
+
+    @property
+    def title(self):
+        return self._title
+
+    @property
+    def description(self):
+        return self._description

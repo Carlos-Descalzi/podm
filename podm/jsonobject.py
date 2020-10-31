@@ -10,6 +10,7 @@ from .processor import DefaultProcessor
 from .properties import DefaultPropertyHandler, RichPropertyHandler
 from enum import Enum, IntEnum
 from .validation import ValidationException, TypeValidator
+from .schema import SchemaBuilder
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
 _DEFAULT_VALIDATOR = TypeValidator()
@@ -147,17 +148,7 @@ class BaseJsonObject:
         """
         cls._check_init_class()
 
-        properties = OrderedDict([(p.json(), p.schema()) for p in cls._properties.values()])
-        schema = OrderedDict(
-            [("type", "object"), ("properties", OrderedDict([("py/object", {"const": cls.object_type_name()})]),),]
-        )
-        if cls.__jsonpickle_format__:
-            schema["properties"]["py/state"] = {"$ref": "#/definitions/state"}
-            schema["definitions"] = {"state": OrderedDict([("type", "object"), ("properties", properties)])}
-        else:
-            schema["properties"].update(properties)
-
-        return schema
+        return SchemaBuilder(cls).build()
 
     @classmethod
     def object_type_name(cls):

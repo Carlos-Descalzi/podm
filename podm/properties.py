@@ -52,13 +52,15 @@ class PropertyHandler(metaclass=ABCMeta):
         """
         pass
 
-    def json_field_type(self):
+    def json_field_type(self, type_definitions={}):
         """
         Converts actual field type into javascript types.
         Subclasses may extend it
         """
         field_type = self.field_type()
 
+        if field_type is None:
+            return "object"
         if field_type == str:
             return "string"
         elif field_type == bool:
@@ -67,14 +69,18 @@ class PropertyHandler(metaclass=ABCMeta):
             return "number"
         elif field_type == list:
             return "array"
+        elif issubclass(field_type, Enum):
+            return "number"
+        elif field_type.__name__ in type_definitions:
+            return {"$ref": f"#/definitions/{field_type.__name__}"}
         else:
             return "object"
 
-    def schema(self) -> Mapping:
+    def schema(self, type_definitions={}) -> Mapping:
         """
         Returns the json schema definition of the property
         """
-        return {"type": self.json_field_type()}
+        return {"type": self.json_field_type(type_definitions)}
 
     def validator(self):
         return None
@@ -192,3 +198,22 @@ class DefaultPropertyHandler(RichPropertyHandler):
 
     def allow_none(self):
         return self._definition.allow_none
+
+    def schema(self, type_definitions={}):
+        schema = super().schema(type_definitions)
+
+        default = self._definition.default
+        if default is not None and not callable(default):
+            schema["default"] = self._definition.default
+
+        if self._definition.title:
+            schema["title"] = self._definition.title
+
+        if self._definition.description:
+            schema["description"] = self._definition.description
+
+        if self.field_type() and issubclass(self.field_type(), Enum) and self.enum_as_str:
+            schema["type"] = "string"
+            schema["enum"] = self.field_type()._member_names_
+
+        return schema
