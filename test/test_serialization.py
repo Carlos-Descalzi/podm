@@ -3,17 +3,29 @@ import unittest
 from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf
 from collections import OrderedDict
 from datetime import datetime
-from .common import Entity, Company, Sector, Employee, DateTimeHandler, TestObject, TestObject2, Child, Parent
+from .common import (
+    Entity,
+    Company,
+    Sector,
+    Employee,
+    DateTimeHandler,
+    TestObject,
+    TestObject2,
+    Child,
+    Parent,
+)
 
 
 class TestSerialization(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
         self.assertEqual(
-            set(Company.property_names()), set(["oid", "created", "description", "company_name"]),
+            set(Company.property_names()),
+            set(["oid", "created", "description", "company_name"]),
         )
         self.assertEqual(
-            set(Company.json_field_names()), set(["oid", "created", "description", "company-name"]),
+            set(Company.json_field_names()),
+            set(["oid", "created", "description", "company-name"]),
         )
 
     def test_accessors(self):
@@ -190,7 +202,9 @@ class TestSerialization(unittest.TestCase):
             val1 = Property()
 
         obj = TestObject4()
-        obj.val1 = OrderedDict(key1="value1", key2="value2", key3="value3", key4="value4")
+        obj.val1 = OrderedDict(
+            key1="value1", key2="value2", key3="value3", key4="value4"
+        )
 
         serialized = obj.to_dict(OrderedDict)
         self.assertTrue(isinstance(serialized, OrderedDict))

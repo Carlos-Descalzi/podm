@@ -12,17 +12,26 @@ class SchemaBuilder:
 
         definitions = self._collect_definitions(obj_properties)
 
-        properties = OrderedDict([(p.json(), p.schema(definitions)) for p in obj_properties.values()])
+        properties = OrderedDict(
+            [(p.json(), p.schema(definitions)) for p in obj_properties.values()]
+        )
 
         schema = OrderedDict(
             [
                 ("type", "object"),
-                ("properties", OrderedDict([("py/object", {"const": self._obj_type.object_type_name()})]),),
+                (
+                    "properties",
+                    OrderedDict(
+                        [("py/object", {"const": self._obj_type.object_type_name()})]
+                    ),
+                ),
             ]
         )
         if self._obj_type.__jsonpickle_format__:
             schema["properties"]["py/state"] = {"$ref": "#/definitions/state"}
-            definitions.update({"state": OrderedDict([("type", "object"), ("properties", properties)])})
+            definitions.update(
+                {"state": OrderedDict([("type", "object"), ("properties", properties)])}
+            )
         else:
             schema["properties"].update(properties)
 

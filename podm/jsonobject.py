@@ -74,7 +74,11 @@ class DefaultIntrospector(Introspector):
 
         for _class in _get_class_hierarchy(obj_class):
             class_properties = OrderedDict(
-                [(k, handler_class(_class, k, v)) for k, v in _class.__dict__.items() if isinstance(v, Property)]
+                [
+                    (k, handler_class(_class, k, v))
+                    for k, v in _class.__dict__.items()
+                    if isinstance(v, Property)
+                ]
             )
 
             properties.update(class_properties)
@@ -157,7 +161,9 @@ class BaseJsonObject:
         """
         return "%s.%s" % (cls.__module__, cls.__name__)
 
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None):
+    def to_dict(
+        self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None
+    ):
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when
@@ -182,7 +188,9 @@ class BaseJsonObject:
 
         return result
 
-    def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True):
+    def get_state_dict(
+        self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True
+    ):
         """
         Returns the plain JSON-like dictionary containing the state of this class.
         The result dictionary does not provide object type information nor any jsonpickle-like field.
@@ -210,7 +218,12 @@ class BaseJsonObject:
         pass
 
     def _convert(
-        self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True,
+        self,
+        prop,
+        value,
+        dict_class=dict,
+        processor=_DEFAULT_PROCESSOR,
+        add_type_identifier=True,
     ):
         handler = prop.handler()
         if handler:
@@ -219,13 +232,27 @@ class BaseJsonObject:
             return value.to_dict(dict_class, processor, add_type_identifier)
         elif isinstance(value, OrderedDict):
             return OrderedDict(
-                [(k, self._convert(prop, v, dict_class, processor, add_type_identifier),) for k, v in value.items()]
+                [
+                    (
+                        k,
+                        self._convert(
+                            prop, v, dict_class, processor, add_type_identifier
+                        ),
+                    )
+                    for k, v in value.items()
+                ]
             )
         elif isinstance(value, dict):
             processed = dict([processor.when_to_dict(k, v) for k, v in value.items()])
-            return {k: self._convert(prop, v, dict_class, processor, add_type_identifier) for k, v in processed.items()}
+            return {
+                k: self._convert(prop, v, dict_class, processor, add_type_identifier)
+                for k, v in processed.items()
+            }
         elif isinstance(value, list):
-            return [self._convert(prop, v, dict_class, processor, add_type_identifier) for v in value]
+            return [
+                self._convert(prop, v, dict_class, processor, add_type_identifier)
+                for v in value
+            ]
         elif isinstance(value, Enum):
             if not isinstance(value, IntEnum) and prop.enum_as_str():
                 return value.name
@@ -293,7 +320,9 @@ class BaseJsonObject:
                     elif prop.field_type() and not primitive(prop):
                         cls._handle_field_type(obj, pname, prop, v)
                     else:
-                        cls._set_field(obj, pname, prop, BaseJsonObject.parse(v, cls.__module__))
+                        cls._set_field(
+                            obj, pname, prop, BaseJsonObject.parse(v, cls.__module__)
+                        )
 
         if validate:
             if required:
@@ -331,7 +360,10 @@ class BaseJsonObject:
             )
         elif isinstance(field_type, MapOf):
             cls._set_field(
-                obj, pname, prop, {ok: field_type.type.from_dict(ov) for ok, ov in value.items()},
+                obj,
+                pname,
+                prop,
+                {ok: field_type.type.from_dict(ov) for ok, ov in value.items()},
             )
         elif issubclass(field_type, Enum):
             if isinstance(value, str):
@@ -358,8 +390,13 @@ class BaseJsonObject:
                 state = val.get("py/state", val)  # fallback to the same dictionary
                 return obj_type.from_dict(state, processor)
             else:
-                processed = dict([processor.when_from_dict(k, v) for k, v in val.items()])
-                return {k: BaseJsonObject.parse(v, module_name, processor) for k, v in processed.items()}
+                processed = dict(
+                    [processor.when_from_dict(k, v) for k, v in val.items()]
+                )
+                return {
+                    k: BaseJsonObject.parse(v, module_name, processor)
+                    for k, v in processed.items()
+                }
         elif isinstance(val, list):
             return [JsonObject.parse(v, module_name, processor) for v in val]
 
@@ -379,7 +416,9 @@ class JsonObject(BaseJsonObject):
 
             for p in cls._properties.values():
                 if not isinstance(p, RichPropertyHandler):
-                    raise Exception("This class needs RichPropertyHandler instances to handle properties")
+                    raise Exception(
+                        "This class needs RichPropertyHandler instances to handle properties"
+                    )
                 if p.setter():
                     cls._accessors[p.setter_name()] = p.setter()
                 if p.getter():
@@ -387,7 +426,11 @@ class JsonObject(BaseJsonObject):
 
     def __str__(self):
         return (
-            self.__class__.__name__ + ":" + ";".join(["%s=%s" % (k, v.get(self)) for k, v in self._properties.items()])
+            self.__class__.__name__
+            + ":"
+            + ";".join(
+                ["%s=%s" % (k, v.get(self)) for k, v in self._properties.items()]
+            )
         )
 
     def __repr__(self):
@@ -458,4 +501,8 @@ class JsonObject(BaseJsonObject):
         """
         Defines its equality by same class and same state dictionaries
         """
-        return other and self.__class__ == other.__class__ and self.get_state_dict() == other.get_state_dict()
+        return (
+            other
+            and self.__class__ == other.__class__
+            and self.get_state_dict() == other.get_state_dict()
+        )

@@ -3,7 +3,17 @@ import unittest
 from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf
 from collections import OrderedDict
 from datetime import datetime
-from .common import Entity, Company, Sector, Employee, DateTimeHandler, TestObject, TestObject2, Child, Parent
+from .common import (
+    Entity,
+    Company,
+    Sector,
+    Employee,
+    DateTimeHandler,
+    TestObject,
+    TestObject2,
+    Child,
+    Parent,
+)
 
 
 class TestProcessor(unittest.TestCase):

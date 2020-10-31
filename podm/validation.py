@@ -20,7 +20,9 @@ class ValidationException(Exception):
         return self._issues
 
     def __str__(self):
-        return "ValidationException: " + ", ".join([f"{k}: {v}" for k, v in self._issues.items()])
+        return "ValidationException: " + ", ".join(
+            [f"{k}: {v}" for k, v in self._issues.items()]
+        )
 
 
 class Validator(metaclass=ABCMeta):

@@ -212,7 +212,11 @@ class DefaultPropertyHandler(RichPropertyHandler):
         if self._definition.description:
             schema["description"] = self._definition.description
 
-        if self.field_type() and issubclass(self.field_type(), Enum) and self.enum_as_str:
+        if (
+            self.field_type()
+            and issubclass(self.field_type(), Enum)
+            and self.enum_as_str
+        ):
             schema["type"] = "string"
             schema["enum"] = self.field_type()._member_names_
 
