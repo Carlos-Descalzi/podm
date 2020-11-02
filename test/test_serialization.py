@@ -20,12 +20,10 @@ class TestSerialization(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
         self.assertEqual(
-            set(Company.property_names()),
-            set(["oid", "created", "description", "company_name"]),
+            set(Company.property_names()), set(["oid", "created", "description", "company_name"]),
         )
         self.assertEqual(
-            set(Company.json_field_names()),
-            set(["oid", "created", "description", "company-name"]),
+            set(Company.json_field_names()), set(["oid", "created", "description", "company-name"]),
         )
 
     def test_accessors(self):
@@ -162,6 +160,7 @@ class TestSerialization(unittest.TestCase):
                 return val
 
             def decode(self, val):
+                print("decode", val)
                 return str(val).lower() == "true" if val is not None else None
 
         bool_handler = BoolHandler()
@@ -179,7 +178,7 @@ class TestSerialization(unittest.TestCase):
 
         obj = TestObject2.from_dict(obj_dict)
 
-        self.assertTrue(isinstance(obj.some_boolean_1, bool))
+        self.assertIsInstance(obj.some_boolean_1, bool)
         self.assertTrue(isinstance(obj.some_boolean_2, bool))
         self.assertIsNone(obj.some_boolean_3)
 
@@ -202,9 +201,7 @@ class TestSerialization(unittest.TestCase):
             val1 = Property()
 
         obj = TestObject4()
-        obj.val1 = OrderedDict(
-            key1="value1", key2="value2", key3="value3", key4="value4"
-        )
+        obj.val1 = OrderedDict(key1="value1", key2="value2", key3="value3", key4="value4")
 
         serialized = obj.to_dict(OrderedDict)
         self.assertTrue(isinstance(serialized, OrderedDict))

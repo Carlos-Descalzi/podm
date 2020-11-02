@@ -16,4 +16,4 @@ tests:
 	nosetests test/
 
 lint:
-	black podm test
+	#black podm test
