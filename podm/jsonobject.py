@@ -169,7 +169,7 @@ class BaseJsonObject:
         """
         result = dict_class()
 
-        add_type_identifier = add_type_identifier or self.__add_type_identifier__
+        add_type_identifier = add_type_identifier if add_type_identifier is not None else self.__add_type_identifier__
 
         if add_type_identifier:
             result["py/object"] = self.object_type_name()
