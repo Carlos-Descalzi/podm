@@ -169,9 +169,9 @@ class BaseJsonObject:
         """
         result = dict_class()
 
-        add_type_identifier = add_type_identifier if add_type_identifier is not None else self.__add_type_identifier__
+        add_type = add_type_identifier if add_type_identifier is not None else self.__add_type_identifier__
 
-        if add_type_identifier:
+        if add_type:
             result["py/object"] = self.object_type_name()
 
         state_dict = self.get_state_dict(dict_class, processor, add_type_identifier)
@@ -257,14 +257,22 @@ class BaseJsonObject:
         constructor = _find_constructor(cls)
         constructor(obj)
 
-        properties = {v.json(): (k, v) for k, v in obj._properties.items()}
+        obj.update(jsondata, processor, validate)
+
+        obj._after_deserialize()
+
+        return obj
+
+    def update(self, jsondata, processor=_DEFAULT_PROCESSOR, validate=None):
+
+        properties = {v.json(): (k, v) for k, v in self._properties.items()}
 
         # For backwards compatibility with jsonpickle
         data = jsondata.get("py/state", jsondata)
 
         primitive = lambda p: p.field_type() in [bool, int, float, str]
 
-        validate = validate or cls.__validate__
+        do_validate = validate if validate is not None else self.__validate__
 
         issues = {}
 
@@ -284,68 +292,61 @@ class BaseJsonObject:
                     handler = prop.handler()
                     if handler:
                         v = handler.decode(v)
-                        cls._set_field(obj, pname, prop, v)
+                        self._set_field(pname, prop, v)
                     elif prop.field_type() and not primitive(prop):
-                        v = cls._handle_field_type(obj, pname, prop, v)
+                        v = self._handle_field_type(pname, prop, v)
                     else:
-                        v = BaseJsonObject.parse(v, cls.__module__)
-                        cls._set_field(obj, pname, prop, v)
+                        v = BaseJsonObject.parse(v, self.__class__.__module__)
+                        self._set_field(pname, prop, v)
 
-                    if validate:
-                        issue = cls._validate(obj, prop, v)
+                    if do_validate:
+                        issue = self._validate(prop, v)
                         if issue:
                             issues[k] = issue
 
-        if validate:
+        if do_validate:
             if required:
                 issues.update({k: f"Field {k} is required" for k in required})
             if issues:
                 raise ValidationException(issues)
 
-        obj._after_deserialize()
-
-        return obj
-
-    @classmethod
-    def _validate(cls, obj, prop, value):
+    def _validate(self, prop, value):
         validator = prop.validator()
 
         if validator:
             if validator == "default":
                 validator = _DEFAULT_VALIDATOR
-            return validator.validate(obj, prop.name(), value)
+            return validator.validate(self, prop.name(), value)
         return None
 
-    @classmethod
-    def _set_field(cls, obj, pname, prop, value):
-        if hasattr(obj, "__setitem__"):
-            obj[pname] = value
+    def _set_field(self, pname, prop, value):
+        if hasattr(self, "__setitem__"):
+            self[pname] = value
         else:
-            prop.set(obj, value)
+            prop.set(self, value)
 
-    @classmethod
-    def _handle_field_type(cls, obj, pname, prop, value):
+    def _handle_field_type(self, pname, prop, value):
         field_type = prop.field_type()
         if isinstance(field_type, ArrayOf):
             value = list(map(field_type.type.from_dict, value))
-            cls._set_field(obj, pname, prop, value)
+            self._set_field(pname, prop, value)
         elif isinstance(field_type, MapOf):
             value = {ok: field_type.type.from_dict(ov) for ok, ov in value.items()}
-            cls._set_field(obj, pname, prop, value)
+            self._set_field(pname, prop, value)
         elif issubclass(field_type, Enum):
             if isinstance(value, str):
                 value = field_type[value]
-                cls._set_field(obj, pname, prop, value)
+                self._set_field(pname, prop, value)
             else:
                 # TODO: is there a better way?
                 for m in list(field_type):
                     if m.value == value:
-                        cls._set_field(obj, pname, prop, m)
+                        self._set_field(pname, prop, m)
                         value = m
                         break
         else:
             value = field_type.from_dict(value)
-            cls._set_field(obj, pname, prop, value)
+            self._set_field(pname, prop, value)
 
         return value
 
