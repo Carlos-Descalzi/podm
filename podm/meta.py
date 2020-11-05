@@ -69,6 +69,7 @@ class Property(object):
         validator=None,
         title=None,
         description=None,
+        group=None,
     ):
         """
         Parameters:
@@ -81,6 +82,9 @@ class Property(object):
         allow_none: Allows None as value.
         validator: Allow specify a validator for this property. Possible values are, None for no validation, 
             an implementation of Validator interface, or "default" to use default validation.
+        title: A title to be placed on json schema.
+        description: A description to be placed in json schema.
+        group: can be a string or a list of strings. Can be used later to filter out what fields will be dumped.
         """
         self._json = json
         self._type = type
@@ -91,6 +95,7 @@ class Property(object):
         self._validator = validator
         self._title = title
         self._description = description
+        self._group = group
 
     @property
     def json(self) -> str:
@@ -155,3 +160,7 @@ class Property(object):
     @property
     def description(self):
         return self._description
+
+    @property
+    def group(self):
+        return self._group

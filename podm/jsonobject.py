@@ -157,7 +157,7 @@ class BaseJsonObject:
         """
         return "%s.%s" % (cls.__module__, cls.__name__)
 
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None):
+    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None, group_filter=None):
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when
@@ -166,6 +166,8 @@ class BaseJsonObject:
         Parameters:
             dict_class: the type of dictionary object instantiated to return the data, default dict
             processor: A processor for key/value pairs
+            add_type_identifier: Overrides the default setting of the class. Allow/disallow type identifier.
+            group_filter: a string or list of strings with names of field groups to be dumped.
         """
         result = dict_class()
 
@@ -174,7 +176,7 @@ class BaseJsonObject:
         if add_type:
             result["py/object"] = self.object_type_name()
 
-        state_dict = self.get_state_dict(dict_class, processor, add_type_identifier)
+        state_dict = self.get_state_dict(dict_class, processor, add_type_identifier, group_filter)
         if self.__jsonpickle_format__:
             result["py/state"] = state_dict
         else:
@@ -182,7 +184,9 @@ class BaseJsonObject:
 
         return result
 
-    def get_state_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True):
+    def get_state_dict(
+        self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True, group_filter=None
+    ):
         """
         Returns the plain JSON-like dictionary containing the state of this class.
         The result dictionary does not provide object type information nor any jsonpickle-like field.
@@ -192,15 +196,30 @@ class BaseJsonObject:
         """
         result = dict_class()
         for pname, prop in self._properties.items():
-            if hasattr(self, "__getitem__"):
-                val = self[pname]
-            else:
-                val = prop.get(self)
+            if self._group_matches(group_filter, prop):
+                if hasattr(self, "__getitem__"):
+                    val = self[pname]
+                else:
+                    val = prop.get(self)
 
-            val = self._convert(prop, val, dict_class, processor, add_type_identifier)
-            key, val = processor.when_to_dict(prop.json(), val)
-            result[key] = val
+                val = self._convert(prop, val, dict_class, processor, add_type_identifier)
+                key, val = processor.when_to_dict(prop.json(), val)
+                result[key] = val
         return result
+
+    def _group_matches(self, group_filter, property):
+        if not group_filter:
+            return True
+
+        prop_group = property.group
+
+        if not prop_group:
+            return False
+
+        group_filter = set([group_filter] if isinstance(group_filter, str) else group_filter)
+        prop_group = set([prop_group] if isinstance(prop_group, str) else prop_group)
+
+        return len(group_filter & prop_group) > 0
 
     def after_deserialize(self):
         """
