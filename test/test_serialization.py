@@ -351,6 +351,25 @@ class TestSerialization(unittest.TestCase):
         self.assertEqual(1, len(obj.children))
         self.assertIsInstance(obj.children[0], Child)
 
+    def test_group_filter(self):
+        class TestObject5(JsonObject):
+            field1 = Property(group="group1")
+            field2 = Property(group="group2")
+            field3 = Property(group="group2")
+
+        obj = TestObject5(field1=1, field2=2, field=3)
+        result = obj.to_dict(group_filter="group1")
+        self.assertEqual(2, len(result))
+        self.assertIn("field1", result)
+        self.assertNotIn("field2", result)
+        self.assertNotIn("field3", result)
+
+        result = obj.to_dict(group_filter="group2")
+        self.assertEqual(3, len(result))
+        self.assertNotIn("field1", result)
+        self.assertIn("field2", result)
+        self.assertIn("field3", result)
+
 
 if __name__ == "__main__":
     unittest.main()

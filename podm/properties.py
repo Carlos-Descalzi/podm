@@ -88,6 +88,10 @@ class PropertyHandler(metaclass=ABCMeta):
     def allow_none(self):
         return True
 
+    @property
+    def group(self):
+        return None
+
 
 class RichPropertyHandler(PropertyHandler):
     """
@@ -199,6 +203,10 @@ class DefaultPropertyHandler(RichPropertyHandler):
     def allow_none(self):
         return self._definition.allow_none
 
+    @property
+    def group(self):
+        return self._definition.group
+
     def schema(self, type_definitions={}):
         schema = super().schema(type_definitions)
 
@@ -212,11 +220,7 @@ class DefaultPropertyHandler(RichPropertyHandler):
         if self._definition.description:
             schema["description"] = self._definition.description
 
-        if (
-            self.field_type()
-            and issubclass(self.field_type(), Enum)
-            and self.enum_as_str
-        ):
+        if self.field_type() and issubclass(self.field_type(), Enum) and self.enum_as_str:
             schema["type"] = "string"
             schema["enum"] = self.field_type()._member_names_
 

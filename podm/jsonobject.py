@@ -318,12 +318,16 @@ class BaseJsonObject:
                         v = BaseJsonObject.parse(v, self.__class__.__module__)
                         self._set_field(pname, prop, v)
 
-                    if do_validate:
-                        issue = self._validate(prop, v)
-                        if issue:
-                            issues[k] = issue
-
         if do_validate:
+            for k in properties:
+                pname, prop = properties.get(k)
+                if hasattr(self, "__getitem__"):
+                    val = self[pname]
+                else:
+                    val = prop.get(self)
+                issue = self._validate(prop, val)
+                if issue:
+                    issues[k] = issue
             if required:
                 issues.update({k: f"Field {k} is required" for k in required})
             if issues:
