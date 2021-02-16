@@ -11,6 +11,7 @@ from .properties import DefaultPropertyHandler, RichPropertyHandler
 from enum import Enum, IntEnum
 from .validation import ValidationException, TypeValidator
 from .schema import SchemaBuilder
+from . import aliases
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
 _DEFAULT_VALIDATOR = TypeValidator()
@@ -29,6 +30,7 @@ def _find_constructor(obj_class):
 
 
 def _resolve_obj_type(type_name, module_name):
+    type_name = aliases.get_obj_class_name(type_name) or type_name
 
     if "." in type_name:
         i = type_name.rfind(".")
@@ -174,7 +176,9 @@ class BaseJsonObject:
         add_type = add_type_identifier if add_type_identifier is not None else self.__add_type_identifier__
 
         if add_type:
-            result["py/object"] = self.object_type_name()
+            obj_type_name = self.object_type_name()
+            obj_type_name = aliases.get_alias(obj_type_name) or obj_type_name
+            result["py/object"] = obj_type_name
 
         state_dict = self.get_state_dict(dict_class, processor, add_type_identifier, group_filter)
         if self.__jsonpickle_format__:

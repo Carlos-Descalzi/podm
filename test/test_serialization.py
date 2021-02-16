@@ -1,6 +1,6 @@
 # vim:ts=4:sw=4:expandtab
 import unittest
-from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf
+from podm import JsonObject, Property, Handler, Processor, ArrayOf, MapOf, add_alias
 from collections import OrderedDict
 from datetime import datetime
 from .common import (
@@ -14,6 +14,10 @@ from .common import (
     Child,
     Parent,
 )
+
+
+class TestAliasedObject(JsonObject):
+    field1 = Property()
 
 
 class TestSerialization(unittest.TestCase):
@@ -369,6 +373,18 @@ class TestSerialization(unittest.TestCase):
         self.assertNotIn("field1", result)
         self.assertIn("field2", result)
         self.assertIn("field3", result)
+
+    def test_alias(self):
+        add_alias("test_object_1", TestAliasedObject.object_type_name())
+
+        obj = TestAliasedObject(field1="x")
+        data = obj.to_dict()
+
+        self.assertEqual("test_object_1", data["py/object"])
+
+        deserialized = JsonObject.parse(data)
+
+        self.assertIsInstance(deserialized, TestAliasedObject)
 
 
 if __name__ == "__main__":

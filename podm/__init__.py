@@ -6,3 +6,4 @@ from .meta import Handler, Property, ArrayOf, MapOf
 from .processor import Processor
 from .properties import PropertyHandler, RichPropertyHandler
 from .validation import Validator, ValidationException
+from .aliases import add_alias
