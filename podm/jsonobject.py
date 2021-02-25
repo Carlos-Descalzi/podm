@@ -354,26 +354,27 @@ class BaseJsonObject:
 
     def _handle_field_type(self, pname, prop, value):
         field_type = prop.field_type()
-        if isinstance(field_type, ArrayOf):
-            value = list(map(field_type.type.from_dict, value))
-            self._set_field(pname, prop, value)
-        elif isinstance(field_type, MapOf):
-            value = {ok: field_type.type.from_dict(ov) for ok, ov in value.items()}
-            self._set_field(pname, prop, value)
-        elif issubclass(field_type, Enum):
-            if isinstance(value, str):
-                value = field_type[value]
+        if value is not None:
+            if isinstance(field_type, ArrayOf):
+                value = list(map(field_type.type.from_dict, value))
                 self._set_field(pname, prop, value)
+            elif isinstance(field_type, MapOf):
+                value = {ok: field_type.type.from_dict(ov) for ok, ov in value.items()}
+                self._set_field(pname, prop, value)
+            elif issubclass(field_type, Enum):
+                if isinstance(value, str):
+                    value = field_type[value]
+                    self._set_field(pname, prop, value)
+                else:
+                    # TODO: is there a better way?
+                    for m in list(field_type):
+                        if m.value == value:
+                            self._set_field(pname, prop, m)
+                            value = m
+                            break
             else:
-                # TODO: is there a better way?
-                for m in list(field_type):
-                    if m.value == value:
-                        self._set_field(pname, prop, m)
-                        value = m
-                        break
-        else:
-            value = field_type.from_dict(value)
-            self._set_field(pname, prop, value)
+                value = field_type.from_dict(value)
+                self._set_field(pname, prop, value)
 
         return value
 

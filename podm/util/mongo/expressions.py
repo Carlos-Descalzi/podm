@@ -1,8 +1,9 @@
 from podm.meta import CollectionOf
 from abc import ABCMeta, abstractmethod
+from collections.abc import Mapping
 
 
-class BaseExpr(metaclass=ABCMeta):
+class BaseExpr(Mapping, metaclass=ABCMeta):
     """
     Interface for expressions.
     """
@@ -14,6 +15,46 @@ class BaseExpr(metaclass=ABCMeta):
         a mongo query expression.
         """
         pass
+
+    def keys(self):
+        return self.expr().keys()
+
+    def items(self):
+        return self.expr().items()
+
+    def values(self):
+        return self.expr().values()
+
+    def __getitem__(self, key):
+        return self.expr()[key]
+
+    def __len__(self):
+        return 1
+
+    def __hash__(self):
+        return hash(self.expr())
+
+    def __eq__(self, other):
+        if isinstance(other, Expr):
+            return self.expr() == other.expr
+        elif isinstance(other, dict):
+            return self.expr() == other
+        return False
+
+    def __str__(self):
+        return str(self.expr())
+
+    def __repr__(self):
+        return str(self)
+
+    def __contains__(self, key):
+        return key in self.expr()
+
+    def get(self, key, default=None):
+        return self.expr().get(key, default)
+
+    def __iter__(self):
+        return iter(self.expr())
 
 
 class Expr(BaseExpr):
@@ -85,7 +126,7 @@ class And(LogicalOperation):
     _operator = "$and"
 
 
-class JoinedAnd(And):
+class Join(And):
     def expr(self):
         result = {}
 
@@ -93,6 +134,14 @@ class JoinedAnd(And):
             result.update(expr.expr())
 
         return result
+
+
+class Projection(BaseExpr):
+    def __init__(self, fields):
+        self._fields = fields
+
+    def expr(self):
+        return {f.path(): v for (f, v) in map(lambda x: (x, 1) if isinstance(x, BaseField) else x, self._fields)}
 
 
 class Or(LogicalOperation):
@@ -109,6 +158,46 @@ class Not(LogicalOperation):
     def expr(self):
         # Here it takes only first argument
         return {self._operator: self._expressions.expr()}
+
+
+class SortExpr(BaseExpr):
+    ASCENDING = 1
+    DESCENDING = -1
+
+    def __init__(self, field, val):
+        self._field = field
+        self._val = val
+
+    def expr(self):
+        return (self._field.path(), self._val)
+
+
+class BaseSetExpr(BaseExpr):
+    _operator = None
+
+    def __init__(self, parent, set_dict):
+        self._parent = parent
+        self._set_dict = set_dict
+
+    def expr(self):
+        return {self._operator: dict([v.expr() for v in self._set_dict])}
+
+
+class SetExpr(BaseSetExpr):
+    _operator = "$set"
+
+
+class SetOrInsertExpr(BaseSetExpr):
+    _operator = "$setOrInsert"
+
+
+class SetFieldExpr(BaseExpr):
+    def __init__(self, field, val):
+        self._field = field
+        self._val = val
+
+    def expr(self):
+        return (self._field.path(), self._val)
 
 
 class BaseField:
@@ -141,61 +230,15 @@ class BaseField:
     def __getitem__(self, key):
         return ArrayItem(self, self._field, key)
 
-
-class ArrayItem(BaseField):
-    """
-    Array item referencing.
-    """
-
-    def __init__(self, parent, field, key):
-        super().__init__(parent, field)
-        self._key = key
-
-    def path(self):
-        return self._parent.path() + [self]
-
-    def name(self):
-        return "[" + (f"'{self._key}'" if isinstance(self._key, str) else str(self._key)) + "]"
-
-    def _add_dot(self):
-        return False
-
-
-class ObjectTypeExpr(BaseField):
-    def __init__(self, parent):
-        super().__init__(parent, None)
-
-    def name(self):
-        return "py/object"
-
-    def expr(self):
-        return {self.name(): self._parent._obj_type.object_type_name()}
-
-
-class Field(BaseField):
-    """
-    Field referencing.
-    """
-
-    def __init__(self, parent, field, name):
-        super().__init__(parent, field)
-        self._field_name = name
-
-    def name(self):
+    def __eq__(self, value):
         """
-        Actual name of this field
+        $eq operator, translates expression a == b into {'a':b}
         """
-        return self._field.json or self._field_name
+        return Eq(self, value)
 
     def eq(self, value):
         """
         Same as __eq__
-        """
-        return Eq(self, value)
-
-    def __eq__(self, value):
-        """
-        $eq operator, translates expression a == b into {'a':b}
         """
         return Eq(self, value)
 
@@ -247,89 +290,60 @@ class Field(BaseField):
         """
         return Exists(self, val)
 
+    def asc(self):
+        """
+        ascending sort expression
+        """
+        return SortExpr(self, SortExpr.ASCENDING)
 
-class QueryHelper:
+    def desc(self):
+        """
+        descending sort expression
+        """
+        return SortExpr(self, SortExpr.DESCENDING)
+
+    def __call__(self, arg):
+        return SetFieldExpr(self, arg)
+
+
+class ArrayItem(BaseField):
     """
-    Utility class which allows making Mongo queries
-    in a typed way, allowing abstracting implementation from
-    real model.
-
-    Having a some classes like this:
-
-        class Item(JsonObject):
-            product_id = Property(json="product-id")
-            quantity = Property()
-
-        class Invoice(JsonObject):
-            items = Property(type=ArrayOf(Item))
-
-    it is possible to create expressions like this:
-
-        qhi = QueryHelper(Invoice)
-        expression = qhi.and_(qhi.items.product_id == "1000", qhi.items.quantity < 10).expr()
-
-    which will translate into this:
-
-        {'$and': [{'items.product-id':'1000'},{'items.quantity': {'$lt':10}}]}
-
-    Another example:
-        expression = (qhi.items.quantity == 100).expr()
-    
-    while translate into this:
-
-        {'items.quantity':100}
-
+    Array item referencing.
     """
 
-    def __init__(self, obj_type):
-        self._obj_type = obj_type
+    def __init__(self, parent, field, key):
+        super().__init__(parent, field)
+        self._key = key
 
     def name(self):
-        return "py/state" if self._obj_type.__jsonpickle_format__ else ""
+        return "[" + (f"'{self._key}'" if isinstance(self._key, str) else str(self._key)) + "]"
 
-    def field_path(self):
-        return [self] if self._obj_type.__jsonpickle_format__ else []
+    def _add_dot(self):
+        return False
 
-    def __getattr__(self, name):
-        """
-        Returns a field instance pointing to the expected field of the class
-        """
-        return Field(self, getattr(self._obj_type, name), name)
 
-    def and_(self, *args):
-        """
-        $and operator
-        """
-        return And(self, args)
+class ObjectTypeExpr(BaseField):
+    def __init__(self, parent):
+        super().__init__(parent, None)
 
-    def join(self, *args):
-        """
-        Join all expressions passed as parameter into one single dictionary,
-        this is the default $and operation.
-        """
-        return JoinedAnd(self, args)
+    def name(self):
+        return "py/object"
 
-    def or_(self, *args):
-        """
-        $or operator
-        """
-        return Or(self, args)
+    def expr(self):
+        return {self.name(): self._parent._obj_type.object_type_name()}
 
-    def nor(self, *args):
-        """
-        $nor operator
-        """
-        return Nor(self, args)
 
-    def not_(self, arg):
-        """
-        $not operator
-        """
-        return Not(self, arg)
+class Field(BaseField):
+    """
+    Field referencing.
+    """
 
-    def is_type_expr(self):
+    def __init__(self, parent, field, name):
+        super().__init__(parent, field)
+        self._field_name = name
+
+    def name(self):
         """
-        Return an expression for checking document's py/object value.
-        This is translated into: {'py/object' : 'module.classname'}
+        Actual name of this field
         """
-        return ObjectTypeExpr(self)
+        return self._field.json or self._field_name
