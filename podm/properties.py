@@ -162,7 +162,7 @@ class DefaultPropertyHandler(RichPropertyHandler):
         self._setter = setter or DefaultSetter(self._field_name)
 
     def init(self, target, value):
-        self.set(target, value or self._definition.default_val())
+        self.set(target, value if value is not None else self._definition.default_val())
 
     def set(self, target, value):
         self._setter(target, value)
