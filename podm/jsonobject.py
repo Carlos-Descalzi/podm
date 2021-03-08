@@ -446,8 +446,8 @@ class JsonObject(BaseJsonObject):
         if name != "_properties" and name[0] != "_":
             if name in self._properties:
                 self._properties[name].set(self, value)
-            elif name in self.__class__.__dict__:
-                prop = self.__class__.__dict__[name]
+            elif hasattr(self.__class__, name):
+                prop = getattr(self.__class__, name)
                 if isinstance(prop, property) and prop.fset:
                     prop.fset(self, value)
                 else:
