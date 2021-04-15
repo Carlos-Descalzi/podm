@@ -17,6 +17,80 @@ Features:
 
 ## Some use case samples
 
+Very simple case:
+```python
+from podm import JsonObject, Property
+
+class Person(JsonObject):
+
+   first_name = Property()
+   last_name = Property()
+   
+person = Person(first_name='John',last_name='Doe')
+person_dict = person.to_dict()
+print(json.dumps(person_dict,indent=4))
+
+# will output
+{
+    "py/object": "__main__.Person",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+```
+
+Notice the field "py/object", if you don't need it, you can specify on the class declaration:
+
+```python
+
+class Person(JsonObject):
+
+    __add_type_identifier__ = False
+    
+    first_name = Property()
+    last_name = Property()
+
+```
+
+If you need to specify a different name when the field is converted to dictionary:
+
+```python
+
+class Person(JsonObject):
+
+    __add_type_identifier__ = False
+    
+    first_name = Property('first-name')
+    last_name = Property('last-name')
+
+
+person = Person(first_name='John',last_name='Doe')
+person_dict = person.to_dict()
+print(json.dumps(person_dict,indent=4))
+
+# will output
+{
+    "first-name": "John",
+    "last-name": "Doe"
+}
+```
+
+Now, when you need to convert the dictionary back to object:
+```
+person = Person.from_dict({'first-name':'John', 'last-name':'Doe'})
+```
+
+In case you don't want to explicitly use the class, or you are working with a hierarchy of classes, you will need the type identifier field in order to let the library recognize the object type:
+```python
+some_dictionary = {
+    "py/object": "__main__.Person",
+    "first-name": "John",
+    "last-name": "Doe"
+}
+some_obj = JsonObject.parse(some_dictionary)
+```
+
+
+Handling complex data types:
 ```python
 from podm import JsonObject, Property, Handler
 
@@ -64,27 +138,7 @@ json_data = company.to_dict()
 
 company_2 = Company.from_dict(json_data)
 ```
-## Deserialize a dictionary with no type information.
 
-```python
-data = {
-	'company-name' : 'master',
-	'description'  : 'some description'
-}
-company = Company.from_dict(data)
-```
-
-## Deserialize a dictionary with type information
-Uses the same field as jsonpickle.
-
-```python
-data = {
-	'py/object' : 'Company',
-	'company-name' : 'master',
-	'description'  : 'some description'
-}
-company = JsonObject.parse(data) 
-```
 
 ## Jsonpickle format support
 ```python
@@ -133,21 +187,6 @@ company_name = company.company_name
 # will print 'Getter called!!!'
 ```
 
-## OrderedDict support
-```python
-
-serialized = company.to_dict(OrderedDict)
-# serialized data is instance of OrderedDict
-
-class TestObject(JsonObject):
-	val1 = Property()
-
-obj = TestObject()
-obj.val1 = OrderedDict(key1='value1')
-
-serialized = company.to_dict()
-# serialized will be instance of dict, field 'val1' will be instance of OrderedDict
-```
 ### Enum support
 It is possible to decide how to serialize/deserialize enums.
 ```python
