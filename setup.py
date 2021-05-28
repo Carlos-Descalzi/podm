@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="podm",
-    version="0.0.16",
+    version="0.0.17",
     author="Carlos Descalzi",
     author_email="carlos.descalzi@gmail.com",
     description="A Object-JSON Document mapper",

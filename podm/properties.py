@@ -3,7 +3,7 @@ __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
 from enum import Enum, IntEnum
-from .meta import Handler
+from .meta import Handler, ArrayOf, MapOf
 from typing import Any, Type, Mapping
 
 
@@ -59,6 +59,9 @@ class PropertyHandler(metaclass=ABCMeta):
         """
         field_type = self.field_type()
 
+        return self._json_field_type(field_type, type_definitions)
+
+    def _json_field_type(self, field_type, type_definitions={}):
         if field_type is None:
             return "object"
         if field_type == str:
@@ -69,6 +72,13 @@ class PropertyHandler(metaclass=ABCMeta):
             return "number"
         elif field_type == list:
             return "array"
+        elif isinstance(field_type, ArrayOf):
+            return {"type": "array", "items": self._json_field_type(field_type.type, type_definitions)}
+        elif isinstance(field_type, MapOf):
+            return {
+                "type": "object",
+                "patternProperties": {".*": self._json_field_type(field_type.type, type_definitions)},
+            }
         elif issubclass(field_type, Enum):
             return "number"
         elif field_type.__name__ in type_definitions:
@@ -80,7 +90,14 @@ class PropertyHandler(metaclass=ABCMeta):
         """
         Returns the json schema definition of the property
         """
-        return {"type": self.json_field_type(type_definitions)}
+        schema_ref = self._definition.schema_ref
+
+        if schema_ref:
+            return {"$ref": schema_ref}
+        field_type = self.json_field_type(type_definitions)
+        if isinstance(field_type, str):
+            return {"type": self.json_field_type(type_definitions)}
+        return field_type
 
     def validator(self):
         return None
@@ -90,6 +107,12 @@ class PropertyHandler(metaclass=ABCMeta):
 
     @property
     def group(self):
+        return None
+
+    def format(self):
+        return None
+
+    def pattern(self):
         return None
 
 
@@ -207,6 +230,12 @@ class DefaultPropertyHandler(RichPropertyHandler):
     def group(self):
         return self._definition.group
 
+    def format(self):
+        return self._definition.format
+
+    def pattern(self):
+        return self._definition.pattern
+
     def schema(self, type_definitions={}):
         schema = super().schema(type_definitions)
 
@@ -217,10 +246,20 @@ class DefaultPropertyHandler(RichPropertyHandler):
         if self._definition.title:
             schema["title"] = self._definition.title
 
+        if self._definition.pattern:
+            schema["pattern"] = self._definition.pattern
+        if self._definition.format:
+            schema["format"] = self._definition.format
+
         if self._definition.description:
             schema["description"] = self._definition.description
 
-        if self.field_type() and issubclass(self.field_type(), Enum) and self.enum_as_str:
+        if (
+            self.field_type()
+            and isinstance(self.field_type(), type)
+            and issubclass(self.field_type(), Enum)
+            and self.enum_as_str
+        ):
             schema["type"] = "string"
             schema["enum"] = self.field_type()._member_names_
 

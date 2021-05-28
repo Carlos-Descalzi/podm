@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from .meta import CollectionOf, ArrayOf, MapOf
 from enum import Enum
 
 
@@ -12,28 +12,21 @@ class SchemaBuilder:
 
         definitions = self._collect_definitions(obj_properties)
 
-        properties = OrderedDict(
-            [(p.json(), p.schema(definitions)) for p in obj_properties.values()]
-        )
+        properties = {p.json(): p.schema(definitions) for p in obj_properties.values()}
+        required = [p.json() for p in obj_properties.values() if not p.allow_none()]
 
-        schema = OrderedDict(
-            [
-                ("type", "object"),
-                (
-                    "properties",
-                    OrderedDict(
-                        [("py/object", {"const": self._obj_type.object_type_name()})]
-                    ),
-                ),
-            ]
-        )
+        schema = {"type": "object", "properties": {}}
+
+        if self._obj_type.__add_type_identifier__:
+            schema["properties"]["py/object"] = {"const": self._obj_type.object_type_name()}
         if self._obj_type.__jsonpickle_format__:
             schema["properties"]["py/state"] = {"$ref": "#/definitions/state"}
-            definitions.update(
-                {"state": OrderedDict([("type", "object"), ("properties", properties)])}
-            )
+            definitions.update({"state": {"type": "object", "properties": properties}})
         else:
             schema["properties"].update(properties)
+
+        if required:
+            schema["required"] = required
 
         if definitions:
             schema["definitions"] = definitions
@@ -45,7 +38,10 @@ class SchemaBuilder:
         result = {}
         for prop in properties.values():
             field_type = prop.field_type()
-            if (
+            if isinstance(field_type, CollectionOf):
+                inner_type = field_type.type
+                result[inner_type.__name__] = inner_type.schema()
+            elif (
                 field_type
                 and not self._primitive(field_type)
                 and issubclass(field_type, object)

@@ -34,13 +34,19 @@ class CollectionOf:
     def type(self) -> Type:
         return self._type
 
+    @property
+    def schema_name(self):
+        pass
+
 
 class ArrayOf(CollectionOf):
     """
     Describe an array of a given type.
     """
 
-    pass
+    @property
+    def schema_name(self):
+        return f"{self._type.__name__}"
 
 
 class MapOf(CollectionOf):
@@ -48,7 +54,9 @@ class MapOf(CollectionOf):
     Describe a map a given value type.
     """
 
-    pass
+    @property
+    def schema_name(self):
+        return f"{self._type.__name__}"
 
 
 class Property(object):
@@ -70,6 +78,9 @@ class Property(object):
         title=None,
         description=None,
         group=None,
+        schema_ref=None,
+        pattern=None,
+        format=None,
     ):
         """
         Parameters:
@@ -96,6 +107,9 @@ class Property(object):
         self._title = title
         self._description = description
         self._group = group
+        self._schema_ref = schema_ref
+        self._pattern = pattern
+        self._format = format
 
     @property
     def json(self) -> str:
@@ -164,3 +178,15 @@ class Property(object):
     @property
     def group(self):
         return self._group
+
+    @property
+    def schema_ref(self):
+        return self._schema_ref
+
+    @property
+    def pattern(self):
+        return self._pattern
+
+    @property
+    def format(self):
+        return self._format
