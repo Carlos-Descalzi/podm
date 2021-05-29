@@ -81,6 +81,7 @@ class Property(object):
         schema_ref=None,
         pattern=None,
         format=None,
+        schema=None,
     ):
         """
         Parameters:
@@ -96,6 +97,11 @@ class Property(object):
         title: A title to be placed on json schema.
         description: A description to be placed in json schema.
         group: can be a string or a list of strings. Can be used later to filter out what fields will be dumped.
+        schema_ref: Reference to a schema that defines the type of this field.
+        pattern: String pattern when field is string
+        format: JSON Schema predefined format name
+        schema: dictionary defining the schema for this field when is a plain dictionary. It overrides the other
+            schema parameters.
         """
         self._json = json
         self._type = type
@@ -110,6 +116,7 @@ class Property(object):
         self._schema_ref = schema_ref
         self._pattern = pattern
         self._format = format
+        self._schema = schema
 
     @property
     def json(self) -> str:
@@ -190,3 +197,7 @@ class Property(object):
     @property
     def format(self):
         return self._format
+
+    @property
+    def schema(self):
+        return self._schema

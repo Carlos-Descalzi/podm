@@ -52,16 +52,16 @@ class PropertyHandler(metaclass=ABCMeta):
         """
         pass
 
-    def json_field_type(self, type_definitions={}):
+    def json_field_type(self, type_definitions={}, deep=True, base_schema_url=None):
         """
         Converts actual field type into javascript types.
         Subclasses may extend it
         """
         field_type = self.field_type()
 
-        return self._json_field_type(field_type, type_definitions)
+        return self._json_field_type(field_type, type_definitions, deep, base_schema_url)
 
-    def _json_field_type(self, field_type, type_definitions={}):
+    def _json_field_type(self, field_type, type_definitions={}, deep=True, base_schema_url=None):
         if field_type is None:
             return "object"
         if field_type == str:
@@ -73,20 +73,38 @@ class PropertyHandler(metaclass=ABCMeta):
         elif field_type == list:
             return "array"
         elif isinstance(field_type, ArrayOf):
-            return {"type": "array", "items": self._json_field_type(field_type.type, type_definitions)}
+            # TODO Fix this mess
+            f_type = self._json_field_type(field_type.type, type_definitions, deep, base_schema_url)
+            if isinstance(f_type, str):
+                f_type = {"type": f_type}
+            return {"type": "array", "items": f_type}
         elif isinstance(field_type, MapOf):
-            return {
-                "type": "object",
-                "patternProperties": {".*": self._json_field_type(field_type.type, type_definitions)},
-            }
+            # TODO Fix this mess
+            f_type = self._json_field_type(field_type.type, type_definitions, deep, base_schema_url)
+            if isinstance(f_type, str):
+                f_type = {"type": f_type}
+            return {"type": "object", "patternProperties": {".*": f_type}}
         elif issubclass(field_type, Enum):
             return "number"
         elif field_type.__name__ in type_definitions:
-            return {"$ref": f"#/definitions/{field_type.__name__}"}
+            if deep:
+                return self._get_ref(field_type, deep, base_schema_url)
+            else:
+                return "object"
+        elif base_schema_url:
+            return self._get_ref(field_type, deep, base_schema_url)
         else:
             return "object"
 
-    def schema(self, type_definitions={}) -> Mapping:
+    def _get_ref(self, field_type, deep, base_schema_url):
+        if deep:
+            return {"$ref": f"#/definitions/{field_type.__name__}"}
+        elif base_schema_url:
+            return {"$ref": f"{base_schema_url}/{field_type.__name__}"}
+
+        return None
+
+    def schema(self, type_definitions={}, deep=True, base_schema_url=None) -> Mapping:
         """
         Returns the json schema definition of the property
         """
@@ -94,9 +112,9 @@ class PropertyHandler(metaclass=ABCMeta):
 
         if schema_ref:
             return {"$ref": schema_ref}
-        field_type = self.json_field_type(type_definitions)
+        field_type = self.json_field_type(type_definitions, deep, base_schema_url)
         if isinstance(field_type, str):
-            return {"type": self.json_field_type(type_definitions)}
+            return {"type": field_type}
         return field_type
 
     def validator(self):
@@ -236,8 +254,12 @@ class DefaultPropertyHandler(RichPropertyHandler):
     def pattern(self):
         return self._definition.pattern
 
-    def schema(self, type_definitions={}):
-        schema = super().schema(type_definitions)
+    def schema(self, type_definitions={}, deep=True, base_schema_url=None):
+
+        if self._definition.schema:
+            return self._definition.schema
+
+        schema = super().schema(type_definitions, deep, base_schema_url)
 
         default = self._definition.default
         if default is not None and not callable(default):

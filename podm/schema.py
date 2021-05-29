@@ -6,13 +6,16 @@ class SchemaBuilder:
     def __init__(self, obj_type):
         self._obj_type = obj_type
 
-    def build(self):
+    def build(self, deep=True, base_schema_url=None):
 
         obj_properties = self._obj_type.properties()
 
-        definitions = self._collect_definitions(obj_properties)
+        if deep:
+            definitions = self._collect_definitions(obj_properties)
+        else:
+            definitions = {}
 
-        properties = {p.json(): p.schema(definitions) for p in obj_properties.values()}
+        properties = {p.json(): p.schema(definitions, deep, base_schema_url) for p in obj_properties.values()}
         required = [p.json() for p in obj_properties.values() if not p.allow_none()]
 
         schema = {"type": "object", "properties": {}}

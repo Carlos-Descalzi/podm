@@ -12,6 +12,7 @@ from enum import Enum, IntEnum
 from .validation import ValidationException, TypeValidator
 from .schema import SchemaBuilder
 from . import aliases
+from typing import Mapping, List
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
 _DEFAULT_VALIDATOR = TypeValidator()
@@ -123,7 +124,7 @@ class BaseJsonObject:
             cls._properties = cls._introspector.get_properties(cls)
 
     @classmethod
-    def property_names(cls):
+    def property_names(cls) -> List[str]:
         """
         Returns the list of property names
         """
@@ -131,12 +132,12 @@ class BaseJsonObject:
         return cls._properties.keys()
 
     @classmethod
-    def properties(cls):
+    def properties(cls) -> Mapping:
         cls._check_init_class()
         return cls._properties
 
     @classmethod
-    def json_field_names(cls):
+    def json_field_names(cls) -> List[str]:
         """
         Returns the list of json field names
         """
@@ -144,22 +145,31 @@ class BaseJsonObject:
         return [p.json() for p in cls._properties.values()]
 
     @classmethod
-    def schema(cls):
+    def schema(cls, deep: bool = True, base_schema_url: str = None) -> Mapping:
         """
         Returns a dictionary representing the json schema.
+        Parameters:
+            deep: Include definition for all objects, default True
+            base_schema_url: Prepends this URL to all schema references.
         """
         cls._check_init_class()
 
-        return SchemaBuilder(cls).build()
+        return SchemaBuilder(cls).build(deep, base_schema_url)
 
     @classmethod
-    def object_type_name(cls):
+    def object_type_name(cls) -> str:
         """
         Returns the complete type name with module as prefix.
         """
         return "%s.%s" % (cls.__module__, cls.__name__)
 
-    def to_dict(self, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=None, group_filter=None):
+    def to_dict(
+        self,
+        dict_class: Mapping = dict,
+        processor=_DEFAULT_PROCESSOR,
+        add_type_identifier: bool = None,
+        group_filter=None,
+    ) -> Mapping:
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when

@@ -91,8 +91,26 @@ class TestSchema(unittest.TestCase):
             keys = Property(default=dict, type=MapOf(Child))
 
         schema = Parent.schema()
-        print(json.dumps(schema, indent=4))
 
         self.assertIn("patternProperties", schema["properties"]["keys"])
         self.assertIn(".*", schema["properties"]["keys"]["patternProperties"])
         self.assertIn("$ref", schema["properties"]["keys"]["patternProperties"][".*"])
+
+        schema = Parent.schema(deep=False)
+        self.assertIn("type", schema["properties"]["keys"]["patternProperties"][".*"])
+        self.assertEqual("object", schema["properties"]["keys"]["patternProperties"][".*"]["type"])
+
+        schema = Parent.schema(deep=False, base_schema_url="http://schemas.org/")
+        self.assertIn("$ref", schema["properties"]["keys"]["patternProperties"][".*"])
+        self.assertEqual("http://schemas.org//Child", schema["properties"]["keys"]["patternProperties"][".*"]["$ref"])
+
+    def test_custom_schema(self):
+
+        field_schema = {"type": "string", "format": "hostname"}
+
+        class Item(JsonObject):
+            field = Property(schema=field_schema)
+
+        schema = Item.schema()
+
+        self.assertEqual(field_schema, schema["properties"]["field"])
