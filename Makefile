@@ -2,18 +2,21 @@
 	lint clean build push tests
 
 
-all: clean build
+all: clean check build
+
+
+check:
+	autoflake --in-place -r podm
 
 clean:
 	rm -rf build dist
-build: lint
+
+build: 
 	python3 setup.py sdist bdist_wheel
 
 push: build
 	python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
 
 tests:
-	nosetests test/
+	nosetests --with-coverage --cover-html --cover-package=podm test/
 
-lint:
-	#black podm test

@@ -1,10 +1,8 @@
 # vim:ts=4:sw=4:expandtab
 __author__ = "Carlos Descalzi"
 
-import copy
 import importlib
 from collections import OrderedDict
-from abc import ABCMeta, abstractmethod
 from .meta import Property, Handler, ArrayOf, MapOf
 from .processor import DefaultProcessor
 from .properties import DefaultPropertyHandler, RichPropertyHandler
@@ -240,7 +238,6 @@ class BaseJsonObject:
         Callback to notify when the object has been instantiated and properly
         deserialized from a json representation
         """
-        pass
 
     def _convert(
         self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True,
@@ -269,7 +266,6 @@ class BaseJsonObject:
         """
         Callback to allow do post-deserialization operations on the object.
         """
-        pass
 
     @classmethod
     def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR, validate=None):

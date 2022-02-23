@@ -2,7 +2,7 @@
 __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Mapping, Type
+from typing import Any, Type
 import copy
 
 

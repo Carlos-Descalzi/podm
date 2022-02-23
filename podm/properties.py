@@ -2,7 +2,7 @@
 __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
-from enum import Enum, IntEnum
+from enum import Enum
 from .meta import Handler, ArrayOf, MapOf
 from typing import Any, Type, Mapping
 
@@ -43,14 +43,12 @@ class PropertyHandler(metaclass=ABCMeta):
         """
         Return the actual json name
         """
-        pass
 
     @abstractmethod
     def field_name(self) -> str:
         """
         Return the field name.
         """
-        pass
 
     def json_field_type(self, type_definitions={}, deep=True, base_schema_url=None):
         """
@@ -146,7 +144,6 @@ class RichPropertyHandler(PropertyHandler):
         Initializes a property with a given value, or 
         a default value provided by this implementation.
         """
-        pass
 
     @abstractmethod
     def enum_as_str(self) -> bool:
@@ -154,7 +151,6 @@ class RichPropertyHandler(PropertyHandler):
         Boolean flag that determines if flags are stored/retrieved
         as string literals or integers.
         """
-        pass
 
     @abstractmethod
     def getter(self):

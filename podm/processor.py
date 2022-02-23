@@ -16,7 +16,6 @@ class Processor(metaclass=ABCMeta):
         Called when deserializing object.
         Returns key, value
         """
-        pass
 
     @abstractmethod
     def when_to_dict(self, key: Any, value: Any) -> Tuple[Any, Any]:
@@ -24,7 +23,6 @@ class Processor(metaclass=ABCMeta):
         Called when serializing object.
         Returns key, value.
         """
-        pass
 
 
 class DefaultProcessor(Processor):

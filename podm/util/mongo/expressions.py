@@ -14,7 +14,6 @@ class BaseExpr(Mapping, metaclass=ABCMeta):
         Convert this expression into a dictionary representing
         a mongo query expression.
         """
-        pass
 
     def keys(self):
         return self.expr().keys()

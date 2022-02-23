@@ -1,6 +1,7 @@
 # vim:ts=4:sw=4:expandtab
 import unittest
-from podm import JsonObject, ListStringHandler, Property
+from podm import JsonObject, Property
+from podm.handlers import ListStringHandler
 
 
 class Company:
@@ -18,7 +19,7 @@ class Companies(JsonObject):
 class TestHandlers(unittest.TestCase):
     def test_ListStringHandler_encoding(self):
         reference_list = ["company1", "company2", "company3"]
-        data = {"companies": reference_list }
+        data = {"companies": reference_list}
         companies = Companies.from_dict(data)
 
         self.assertTrue(all(isinstance(company, Company) for company in companies.company_list))
@@ -31,4 +32,3 @@ class TestHandlers(unittest.TestCase):
         data = companies.to_dict()
 
         self.assertCountEqual(data["companies"], reference_list)
-

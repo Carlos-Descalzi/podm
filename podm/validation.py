@@ -36,7 +36,6 @@ class Validator(metaclass=ABCMeta):
         Validates a field value.
         Returns None when validation passes, or a message indicating the issue.
         """
-        pass
 
 
 class TypeValidator(Validator):
