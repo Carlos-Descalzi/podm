@@ -2,7 +2,7 @@
 __author__ = "Carlos Descalzi"
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Type
+from typing import Any, Type, Mapping
 import copy
 
 
@@ -12,14 +12,14 @@ class Handler(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def encode(self, value: Any) -> Any:
+    def encode(self, value: Any) -> Mapping[str, Any]:
         """
         Returns a json-friendly representation of the given value
         """
         return value
 
     @abstractmethod
-    def decode(self, value_dict: Any) -> Any:
+    def decode(self, value_dict: Mapping[str, Any]) -> Any:
         """
         Converts back the dictionary into a desired type.
         """
@@ -35,7 +35,7 @@ class CollectionOf:
         return self._type
 
     @property
-    def schema_name(self):
+    def schema_name(self) -> str:
         pass
 
 
@@ -45,7 +45,7 @@ class ArrayOf(CollectionOf):
     """
 
     @property
-    def schema_name(self):
+    def schema_name(self) -> str:
         return f"{self._type.__name__}"
 
 
@@ -55,7 +55,7 @@ class MapOf(CollectionOf):
     """
 
     @property
-    def schema_name(self):
+    def schema_name(self) -> str:
         return f"{self._type.__name__}"
 
 
@@ -89,10 +89,10 @@ class Property(object):
         type: The value type, useful when serializing data with no type information
         default: The default value when an object is instantiated. If it is a function/lambda
             it will invoke it to get a new value, otherwise this value is copied for each instance
-        handler: Custom serialization handler for the value contained in the property 
+        handler: Custom serialization handler for the value contained in the property
         enum_as_str: Handle enumerators as strings.
         allow_none: Allows None as value.
-        validator: Allow specify a validator for this property. Possible values are, None for no validation, 
+        validator: Allow specify a validator for this property. Possible values are, None for no validation,
             an implementation of Validator interface, or "default" to use default validation.
         title: A title to be placed on json schema.
         description: A description to be placed in json schema.

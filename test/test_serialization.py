@@ -24,10 +24,12 @@ class TestSerialization(unittest.TestCase):
     def test_properties(self):
         self.assertEqual(set(Entity.property_names()), set(["oid", "created"]))
         self.assertEqual(
-            set(Company.property_names()), set(["oid", "created", "description", "company_name"]),
+            set(Company.property_names()),
+            set(["oid", "created", "description", "company_name"]),
         )
         self.assertEqual(
-            set(Company.json_field_names()), set(["oid", "created", "description", "company-name"]),
+            set(Company.json_field_names()),
+            set(["oid", "created", "description", "company-name"]),
         )
 
     def test_accessors(self):
@@ -199,21 +201,6 @@ class TestSerialization(unittest.TestCase):
         obj_str = str(obj)
 
         self.assertEqual("TestObject3:val1=Hi;val2=True;val3=None", obj_str)
-
-    def test_ordered_dict(self):
-        class TestObject4(JsonObject):
-            val1 = Property()
-
-        obj = TestObject4()
-        obj.val1 = OrderedDict(key1="value1", key2="value2", key3="value3", key4="value4")
-
-        serialized = obj.to_dict(OrderedDict)
-        self.assertTrue(isinstance(serialized, OrderedDict))
-        self.assertTrue(isinstance(serialized["val1"], OrderedDict))
-
-        serialized = obj.to_dict()
-        self.assertFalse(isinstance(serialized, OrderedDict))
-        self.assertTrue(isinstance(serialized["val1"], OrderedDict))
 
     def test_yaml(self):
         class TestObject4(JsonObject):

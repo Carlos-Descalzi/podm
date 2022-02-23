@@ -2,15 +2,14 @@
 __author__ = "Carlos Descalzi"
 
 import importlib
-from collections import OrderedDict
 from .meta import Property, Handler, ArrayOf, MapOf
-from .processor import DefaultProcessor
+from .processor import Processor, DefaultProcessor
 from .properties import DefaultPropertyHandler, RichPropertyHandler
 from enum import Enum, IntEnum
 from .validation import ValidationException, TypeValidator
 from .schema import SchemaBuilder
 from . import aliases
-from typing import Mapping, List
+from typing import Mapping, List, Any, Union
 
 _DEFAULT_PROCESSOR = DefaultProcessor()
 _DEFAULT_VALIDATOR = TypeValidator()
@@ -69,14 +68,14 @@ class Introspector:
 class DefaultIntrospector(Introspector):
     def get_properties(self, obj_class):
 
-        properties = OrderedDict()
+        properties = {}
 
         handler_class = self.property_handler_class()
 
         for _class in _get_class_hierarchy(obj_class):
-            class_properties = OrderedDict(
-                [(k, handler_class(_class, k, v)) for k, v in _class.__dict__.items() if isinstance(v, Property)]
-            )
+            class_properties = {
+                k: handler_class(_class, k, v) for k, v in _class.__dict__.items() if isinstance(v, Property)
+            }
 
             properties.update(class_properties)
 
@@ -143,7 +142,7 @@ class BaseJsonObject:
         return [p.json() for p in cls._properties.values()]
 
     @classmethod
-    def schema(cls, deep: bool = True, base_schema_url: str = None) -> Mapping:
+    def schema(cls, deep: bool = True, base_schema_url: str = None) -> Mapping[str, Any]:
         """
         Returns a dictionary representing the json schema.
         Parameters:
@@ -164,10 +163,10 @@ class BaseJsonObject:
     def to_dict(
         self,
         dict_class: Mapping = dict,
-        processor=_DEFAULT_PROCESSOR,
+        processor: Processor = _DEFAULT_PROCESSOR,
         add_type_identifier: bool = None,
-        group_filter=None,
-    ) -> Mapping:
+        group_filter: Union[str, List[str]] = None,
+    ) -> Mapping[str, Any]:
         """
         Returns the object as a JSON-friendly dictionary.
         Allows specify the dictionary class for the case when
@@ -233,24 +232,19 @@ class BaseJsonObject:
 
         return len(group_filter & prop_group) > 0
 
-    def after_deserialize(self):
-        """
-        Callback to notify when the object has been instantiated and properly
-        deserialized from a json representation
-        """
-
     def _convert(
-        self, prop, value, dict_class=dict, processor=_DEFAULT_PROCESSOR, add_type_identifier=True,
+        self,
+        prop,
+        value,
+        dict_class=dict,
+        processor=_DEFAULT_PROCESSOR,
+        add_type_identifier=True,
     ):
         handler = prop.handler()
         if handler:
             return handler.encode(value)
         elif isinstance(value, BaseJsonObject):
             return value.to_dict(dict_class, processor, add_type_identifier)
-        elif isinstance(value, OrderedDict):
-            return OrderedDict(
-                [(k, self._convert(prop, v, dict_class, processor, add_type_identifier),) for k, v in value.items()]
-            )
         elif isinstance(value, dict):
             processed = dict([processor.when_to_dict(k, v) for k, v in value.items()])
             return {k: self._convert(prop, v, dict_class, processor, add_type_identifier) for k, v in processed.items()}
@@ -264,11 +258,12 @@ class BaseJsonObject:
 
     def _after_deserialize(self):
         """
-        Callback to allow do post-deserialization operations on the object.
+        Callback to notify when the object has been instantiated and properly
+        deserialized from a json representation
         """
 
     @classmethod
-    def from_dict(cls, jsondata, processor=_DEFAULT_PROCESSOR, validate=None):
+    def from_dict(cls, jsondata: Mapping[str, Any], processor: Processor = _DEFAULT_PROCESSOR, validate: bool = None):
         """
         Returns an instance of this class based on a dictionary representation
         of JSON data. The object type is infered from the class from where this
@@ -292,7 +287,7 @@ class BaseJsonObject:
 
         return obj
 
-    def update(self, jsondata, processor=_DEFAULT_PROCESSOR, validate=None):
+    def update(self, jsondata: Mapping[str, Any], processor: Processor = _DEFAULT_PROCESSOR, validate: bool = None):
 
         properties = {v.json(): (k, v) for k, v in self._properties.items()}
 
@@ -385,11 +380,11 @@ class BaseJsonObject:
         return value
 
     @staticmethod
-    def parse(val, module_name="__main__", processor=_DEFAULT_PROCESSOR):
+    def parse(val, module_name: str = "__main__", processor: Processor = _DEFAULT_PROCESSOR):
         """
         Parses a dictionary and returns the appropiate object instance.
         Note the input dictionary must contain 'py/object' field to detect
-        the appropiate object class, otherwise it will return a dictionary 
+        the appropiate object class, otherwise it will return a dictionary
         """
         if isinstance(val, dict):
             if "py/object" in val:

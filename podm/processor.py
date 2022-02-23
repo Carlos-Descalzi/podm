@@ -11,14 +11,14 @@ class Processor(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def when_from_dict(self, key: Any, value: Any) -> Tuple[Any, Any]:
+    def when_from_dict(self, key: str, value: Any) -> Tuple[str, Any]:
         """
         Called when deserializing object.
         Returns key, value
         """
 
     @abstractmethod
-    def when_to_dict(self, key: Any, value: Any) -> Tuple[Any, Any]:
+    def when_to_dict(self, key: str, value: Any) -> Tuple[str, Any]:
         """
         Called when serializing object.
         Returns key, value.
